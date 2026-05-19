@@ -77,6 +77,32 @@
     }
   }
 
+  function _clearAuthFields() {
+    ['su-name', 'su-email', 'su-pass', 'su-pass2', 'si-email', 'si-pass', 'fp-email'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = '';
+      el.classList.remove('error', 'valid');
+    });
+    document.querySelectorAll('.field-err').forEach((err) => {
+      if (err?.id?.startsWith('su-') || err?.id?.startsWith('si-') || err?.id?.startsWith('fp-')) {
+        err.classList.remove('show');
+        err.textContent = '';
+      }
+    });
+    renderPasswordRules('');
+  }
+
+  function _abandonPendingSignupView() {
+    sessionStorage.removeItem('pendingUser');
+    localStorage.removeItem('pendingUser');
+    if (window.IBlogSession?.clearUser) {
+      IBlogSession.clearUser();
+    }
+    document.getElementById('dashboard')?.style.setProperty('display', 'none');
+    document.getElementById('landing-page')?.style.setProperty('display', 'block');
+  }
+
   function passwordChecks(password = '') {
     return {
       length: password.length >= 10,
@@ -142,6 +168,7 @@
   window.showSignup = function () {
     injectModalsIfNeeded();
     closeAllModals();
+    _clearAuthFields();
     document.getElementById('modal-signup')?.classList.add('active');
   };
 
@@ -373,6 +400,10 @@
         onComplete: () => {
           goToDashboard(_pendingArticleId);
           _pendingArticleId = null;
+        },
+        onCancel: () => {
+          _pendingArticleId = null;
+          _abandonPendingSignupView();
         },
       });
       return;

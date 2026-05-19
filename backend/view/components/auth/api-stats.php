@@ -24,6 +24,9 @@ function jsonErr(string $message, int $status = 400): never
 function readJsonBody(): array
 {
     $raw = file_get_contents('php://input');
+    if (($raw === false || $raw === '') && PHP_SAPI === 'cli') {
+        $raw = (string) (getenv('IBLOG_TEST_REQUEST_BODY') ?: '');
+    }
     $decoded = json_decode($raw ?: '{}', true);
     return is_array($decoded) ? $decoded : [];
 }
@@ -67,6 +70,14 @@ function normalizeProfileAssetPath(string $path): string
 
     if (preg_match('#^https?://[^/]+/blog_12(?:3)?/public/uploads/(?:avatars|covers)/[A-Za-z0-9._-]+$#', $path) === 1) {
         return preg_replace('#^https?://[^/]+/blog_12(?:3)?/#', '', $path) ?: $path;
+    }
+
+    if (preg_match('#^/blog/blog/public/uploads/(?:avatars|covers)/[A-Za-z0-9._-]+$#', $path) === 1) {
+        return preg_replace('#^/blog/blog/#', '', $path) ?: $path;
+    }
+
+    if (preg_match('#^https?://[^/]+/blog/blog/public/uploads/(?:avatars|covers)/[A-Za-z0-9._-]+$#', $path) === 1) {
+        return preg_replace('#^https?://[^/]+/blog/blog/#', '', $path) ?: $path;
     }
 
     return $path;
@@ -450,16 +461,23 @@ function getTopAuthors(PDO $cnx, int $currentUserId = 0): array
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
     return [
-        'authors' => array_map(static function (array $row): array {
+        'authors' => array_map(function (array $row) use ($cnx, $currentUserId): array {
             $name = (string) ($row['name'] ?? 'Unknown');
+            $authorId = (int) ($row['id'] ?? 0);
+            $follow = getUserFollowStats($cnx, $authorId);
             return [
-                'id' => (int) ($row['id'] ?? 0),
+                'id' => $authorId,
                 'name' => $name,
                 'initial' => strtoupper($name[0] ?? 'U'),
                 'isPremium' => (bool) ($row['isPremium'] ?? 0),
                 'avatar' => normalizeProfileAssetPath((string) ($row['avatar'] ?? '')),
                 'cover' => normalizeProfileAssetPath((string) ($row['cover'] ?? '')),
                 'bio' => (string) ($row['bio'] ?? ''),
+                'followers' => (int) ($follow['followers'] ?? 0),
+                'following' => (int) ($follow['following'] ?? 0),
+                'isFollowing' => $currentUserId > 0 && $currentUserId !== $authorId
+                    ? isUserFollowing($cnx, $currentUserId, $authorId)
+                    : false,
                 'articleCount' => (int) ($row['articleCount'] ?? 0),
                 'totalLikes' => (int) ($row['totalLikes'] ?? 0),
                 'totalViews' => (int) ($row['totalViews'] ?? 0),
@@ -473,6 +491,7 @@ function getTopAuthors(PDO $cnx, int $currentUserId = 0): array
 
 try {
     require_once __DIR__ . '/../../../config/database.php';
+    require_once __DIR__ . '/../../../controller/UserController.php';
     if (!($cnx instanceof PDO)) {
         jsonErr(databaseConnectionError() ?? 'Database connection failed.', 500);
     }

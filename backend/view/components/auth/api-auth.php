@@ -47,7 +47,23 @@ function passwordStrongEnough(string $password): bool
         && preg_match('/[^A-Za-z0-9]/', $password) === 1;
 }
 
-function userPayload(array $user, ?bool $onboardingComplete = null): array
+function followPayload(PDO $cnx, int $userId, ?int $viewerId = null): array
+{
+    $stats = getUserFollowStats($cnx, $userId);
+
+    return [
+        'followers' => (int) ($stats['followers'] ?? 0),
+        'following' => (int) ($stats['following'] ?? 0),
+        'followingIds' => $viewerId !== null && $viewerId === $userId
+            ? getFollowingUserIds($cnx, $userId)
+            : [],
+        'isFollowing' => $viewerId !== null && $viewerId > 0 && $viewerId !== $userId
+            ? isUserFollowing($cnx, $viewerId, $userId)
+            : false,
+    ];
+}
+
+function userPayload(PDO $cnx, array $user, ?bool $onboardingComplete = null, ?int $viewerId = null): array
 {
     $resolvedOnboarding = $onboardingComplete;
     if ($resolvedOnboarding === null) {
@@ -56,7 +72,7 @@ function userPayload(array $user, ?bool $onboardingComplete = null): array
             : true;
     }
 
-    return [
+    $payload = [
         'id' => (int) ($user['id'] ?? 0),
         'name' => $user['name'],
         'email' => $user['email'],
@@ -75,6 +91,12 @@ function userPayload(array $user, ?bool $onboardingComplete = null): array
         'subjects' => is_array($user['subjects'] ?? null) ? $user['subjects'] : [],
         'onboardingComplete' => (bool) $resolvedOnboarding,
     ];
+
+    return $payload + followPayload(
+        $cnx,
+        (int) ($payload['id'] ?? 0),
+        $viewerId
+    );
 }
 
 function tableExists(PDO $cnx, string $table): bool
@@ -227,6 +249,14 @@ function normalizeProfileImagePath(string $image): string
 
     if (preg_match('#^https?://[^/]+/blog_12(?:3)?/public/uploads/(?:avatars|covers)/[A-Za-z0-9._-]+$#', $image) === 1) {
         return preg_replace('#^https?://[^/]+/blog_12(?:3)?/#', '', $image) ?: $image;
+    }
+
+    if (preg_match('#^/blog/blog/public/uploads/(?:avatars|covers)/[A-Za-z0-9._-]+$#', $image) === 1) {
+        return preg_replace('#^/blog/blog/#', '', $image) ?: $image;
+    }
+
+    if (preg_match('#^https?://[^/]+/blog/blog/public/uploads/(?:avatars|covers)/[A-Za-z0-9._-]+$#', $image) === 1) {
+        return preg_replace('#^https?://[^/]+/blog/blog/#', '', $image) ?: $image;
     }
 
     return $image;
@@ -396,6 +426,49 @@ function loginUser(array $user): void
     $_SESSION['isAdmin'] = (int) ($user['isAdmin'] ?? 0);
 }
 
+function clearAuthSession(): void
+{
+    $_SESSION = [];
+
+    if (session_status() === PHP_SESSION_ACTIVE && ini_get('session.use_cookies')) {
+        $params = session_get_cookie_params();
+        setcookie(
+            session_name(),
+            '',
+            time() - 42000,
+            $params['path'] ?: '/',
+            $params['domain'] ?: '',
+            (bool) ($params['secure'] ?? false),
+            (bool) ($params['httponly'] ?? true)
+        );
+    }
+
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_destroy();
+    }
+}
+
+function deletePendingOnboardingUser(PDO $cnx, int $userId): void
+{
+    if ($userId <= 0) {
+        return;
+    }
+
+    foreach (['user_profile', 'subscription'] as $table) {
+        if (!tableExists($cnx, $table)) {
+            continue;
+        }
+
+        try {
+            $stmt = $cnx->prepare("DELETE FROM {$table} WHERE userId = :userId");
+            $stmt->execute([':userId' => $userId]);
+        } catch (Throwable) {
+        }
+    }
+
+    deleteUser($cnx, $userId);
+}
+
 function ensurePasswordResetTable(PDO $cnx): void
 {
     $cnx->exec(
@@ -428,11 +501,25 @@ function ensurePrivateMessagesTable(PDO $cnx): void
     );
 }
 
-function messageUserPayload(PDO $cnx, array $user): array
+function resolveUserByTarget(PDO $cnx, int $targetUserId = 0, string $targetEmail = ''): array|false
+{
+    if ($targetUserId > 0) {
+        return getUserById($cnx, $targetUserId);
+    }
+
+    $targetEmail = trim($targetEmail);
+    if ($targetEmail !== '') {
+        return getUserByEmail($cnx, $targetEmail);
+    }
+
+    return false;
+}
+
+function messageUserPayload(PDO $cnx, array $user, int $viewerId = 0): array
 {
     $profile = mergeProfileData($cnx, $user);
     $name = (string) ($profile['name'] ?? 'Unknown');
-    return [
+    $payload = [
         'id' => (int) ($profile['id'] ?? 0),
         'name' => $name,
         'email' => (string) ($profile['email'] ?? ''),
@@ -442,7 +529,14 @@ function messageUserPayload(PDO $cnx, array $user): array
         'cover' => normalizeProfileImagePath((string) ($profile['cover'] ?? '')),
         'bio' => (string) ($profile['bio'] ?? ''),
         'initial' => strtoupper(substr($name, 0, 1) ?: 'A'),
+        'pseudo' => (string) ($profile['pseudo'] ?? ''),
     ];
+
+    return $payload + followPayload(
+        $cnx,
+        (int) ($payload['id'] ?? 0),
+        $viewerId > 0 ? $viewerId : null
+    );
 }
 
 function listDirectoryUsers(PDO $cnx, int $currentUserId = 0, string $query = '', int $limit = 24): array
@@ -483,8 +577,8 @@ function listDirectoryUsers(PDO $cnx, int $currentUserId = 0, string $query = ''
     $stmt->execute($params);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-    return array_map(function (array $row) use ($cnx): array {
-        return messageUserPayload($cnx, $row);
+    return array_map(function (array $row) use ($cnx, $currentUserId): array {
+        return messageUserPayload($cnx, $row, $currentUserId);
     }, $rows);
 }
 
@@ -744,7 +838,7 @@ try {
         } catch (Throwable) {
         }
 
-        jsonOk(['user' => userPayload(mergeProfileData($cnx, $user), false)]);
+        jsonOk(['user' => userPayload($cnx, mergeProfileData($cnx, $user), false, (int) $user['id'])]);
     }
 
     if ($action === 'signin') {
@@ -764,14 +858,14 @@ try {
             jsonOk(['redirect' => 'backend/view/components/admin/admin.php']);
         }
 
-        jsonOk(['user' => userPayload(mergeProfileData($cnx, $user), true)]);
+        jsonOk(['user' => userPayload($cnx, mergeProfileData($cnx, $user), true, (int) $user['id'])]);
     }
 
     if ($action === 'me') {
         if (empty($_SESSION['user_id'])) jsonErr('Not authenticated.', 401);
         $user = getUserById($cnx, (int) $_SESSION['user_id']);
         if ($user === false) jsonErr('User not found.', 404);
-        jsonOk(['user' => userPayload(mergeProfileData($cnx, $user), true)]);
+        jsonOk(['user' => userPayload($cnx, mergeProfileData($cnx, $user), true, (int) $_SESSION['user_id'])]);
     }
 
     if ($action === 'update_profile') {
@@ -835,7 +929,25 @@ try {
         if ($updated === false) jsonErr('Profile updated but user could not be loaded.', 500);
         $updated = mergeProfileData($cnx, $updated);
         loginUser($updated);
-        jsonOk(['user' => userPayload($updated, true)]);
+        jsonOk(['user' => userPayload($cnx, $updated, true, (int) $_SESSION['user_id'])]);
+    }
+
+    if ($action === 'cancel_onboarding') {
+        $userId = (int) ($_SESSION['user_id'] ?? 0);
+
+        if ($userId > 0) {
+            $user = getUserById($cnx, $userId);
+            if ($user !== false) {
+                $profile = mergeProfileData($cnx, $user);
+                $onboardingComplete = (bool) ($profile['onboardingComplete'] ?? false);
+                if (!$onboardingComplete) {
+                    deletePendingOnboardingUser($cnx, $userId);
+                }
+            }
+        }
+
+        clearAuthSession();
+        jsonOk(['cancelled' => true]);
     }
 
     if ($action === 'forgot_password') {
@@ -949,7 +1061,7 @@ try {
         $updated = getUserById($cnx, (int) $existing['id']);
         if ($updated === false) jsonErr('Premium user could not be reloaded.', 500);
         loginUser($updated);
-        jsonOk(['user' => userPayload(mergeProfileData($cnx, $updated), false)]);
+        jsonOk(['user' => userPayload($cnx, mergeProfileData($cnx, $updated), false, (int) $updated['id'])]);
     }
 
     if ($action === 'upgrade_to_premium') {
@@ -976,7 +1088,51 @@ try {
             Mailer::send($user['email'], $subject, $html, $text);
         } catch (Throwable) {
         }
-        jsonOk(['user' => userPayload(mergeProfileData($cnx, $user), true)]);
+        jsonOk(['user' => userPayload($cnx, mergeProfileData($cnx, $user), true, (int) $_SESSION['user_id'])]);
+    }
+
+    if ($action === 'get_public_user') {
+        if (empty($_SESSION['user_id'])) jsonErr('Not authenticated.', 401);
+        $targetUserId = (int) ($body['targetUserId'] ?? $body['userId'] ?? 0);
+        $targetEmail = trim((string) ($body['targetEmail'] ?? $body['email'] ?? ''));
+        $target = resolveUserByTarget($cnx, $targetUserId, $targetEmail);
+        if ($target === false) jsonErr('User not found.', 404);
+
+        jsonOk([
+            'user' => messageUserPayload($cnx, $target, (int) $_SESSION['user_id']),
+        ]);
+    }
+
+    if ($action === 'follow_user' || $action === 'unfollow_user') {
+        if (empty($_SESSION['user_id'])) jsonErr('Not authenticated.', 401);
+
+        $viewerId = (int) $_SESSION['user_id'];
+        $targetUserId = (int) ($body['targetUserId'] ?? $body['userId'] ?? 0);
+        $targetEmail = trim((string) ($body['targetEmail'] ?? $body['email'] ?? ''));
+        $target = resolveUserByTarget($cnx, $targetUserId, $targetEmail);
+
+        if ($target === false) jsonErr('User not found.', 404);
+        $targetUserId = (int) ($target['id'] ?? 0);
+        if ($targetUserId === $viewerId) jsonErr('You cannot follow your own account.', 400);
+
+        $changed = $action === 'follow_user'
+            ? followUser($cnx, $viewerId, $targetUserId)
+            : unfollowUser($cnx, $viewerId, $targetUserId);
+
+        if (!$changed && $action === 'follow_user') {
+            jsonErr('Unable to follow this user.', 500);
+        }
+
+        $viewer = getUserById($cnx, $viewerId);
+        $updatedTarget = getUserById($cnx, $targetUserId);
+        if ($viewer === false || $updatedTarget === false) {
+            jsonErr('Could not refresh follow state.', 500);
+        }
+
+        jsonOk([
+            'viewer' => userPayload($cnx, mergeProfileData($cnx, $viewer), true, $viewerId),
+            'target' => messageUserPayload($cnx, $updatedTarget, $viewerId),
+        ]);
     }
 
     if ($action === 'list_users') {

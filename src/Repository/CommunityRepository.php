@@ -212,6 +212,8 @@ final class CommunityRepository
 
     public function findMessages(int $communityId): array
     {
+        $this->ensureMessageTable();
+
         $stmt = $this->connection->prepare(
             'SELECT cm.id, cm.userId, cm.message, cm.createdAt, u.name AS userName
              FROM community_message cm
@@ -228,6 +230,8 @@ final class CommunityRepository
 
     public function createMessage(int $communityId, int $userId, string $message): int|false
     {
+        $this->ensureMessageTable();
+
         $stmt = $this->connection->prepare(
             'INSERT INTO community_message (communityId, userId, message, isDeleted, createdAt)
              VALUES (:communityId, :userId, :message, 0, CURRENT_TIMESTAMP)'
@@ -239,6 +243,22 @@ final class CommunityRepository
         ]);
 
         return $ok ? (int) $this->connection->lastInsertId() : false;
+    }
+
+    public function ensureMessageTable(): void
+    {
+        $this->connection->exec(
+            'CREATE TABLE IF NOT EXISTS community_message (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                communityId INT UNSIGNED NOT NULL,
+                userId INT UNSIGNED NOT NULL,
+                message TEXT NOT NULL,
+                isDeleted TINYINT(1) NOT NULL DEFAULT 0,
+                createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_community_message (communityId, createdAt),
+                INDEX idx_community_message_user (userId)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+        );
     }
 
     public function ensureThreadTables(): void

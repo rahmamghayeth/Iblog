@@ -31,35 +31,35 @@ function assetUrl(string $path): string
   <title>IBlog — Knowledge Without Borders</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Marcellus&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Marcellus&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('css/global.css'), ENT_QUOTES) ?>" />
     <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('css/Darkmode.css'), ENT_QUOTES) ?>" />
     <link rel="stylesheet" href="backend/view/components/preloader/preloader.css" />
     <link rel="stylesheet" href="backend/view/components/auth/auth.css" />
-    <link rel="stylesheet" href="backend/view/components/landing-nav/landing-nav.css" />
+    <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('backend/view/components/landing-nav/landing-nav.css'), ENT_QUOTES) ?>" />
     <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('css/writer.css'), ENT_QUOTES) ?>"/>
     <link rel="stylesheet" href="backend/view/components/hero/hero.css" />
-    <link rel="stylesheet" href="backend/view/components/ticker/ticker.css" />
+    <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('backend/view/components/ticker/ticker.css'), ENT_QUOTES) ?>" />
     <link rel="stylesheet" href="backend/view/components/features/features.css" />
-    <link rel="stylesheet" href="backend/view/components/carousel/carousel.css" />
+    <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('backend/view/components/carousel/carousel.css'), ENT_QUOTES) ?>" />
     <link rel="stylesheet" href="backend/view/components/HIW/hiw.css" />
     <link rel="stylesheet" href="backend/view/components/pricing/pricing.css" />
     <link rel="stylesheet" href="backend/view/components/cta/cta.css" /> 
-        <link rel="stylesheet" href="backend/view/components/testimonial/testimonial.css" />   
+        <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('backend/view/components/testimonial/testimonial.css'), ENT_QUOTES) ?>" />   
     <link
       rel="stylesheet"
       href="<?= htmlspecialchars(assetUrl('backend/view/components/dashboard-layout/dashboard-layout.css'), ENT_QUOTES) ?>"
     />
     <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('backend/view/components/left-rail/left-rail.css'), ENT_QUOTES) ?>" />
     <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('backend/view/components/feed/feed.css'), ENT_QUOTES) ?>" />
-    <link rel="stylesheet" href="backend/view/components/article-card/article-card.css" />
+    <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('backend/view/components/article-card/article-card.css'), ENT_QUOTES) ?>" />
     <link
       rel="stylesheet"
       href="backend/view/components/podcast-player/podcast-player.css"
     />
     <link
       rel="stylesheet"
-      href="backend/view/components/article-reader/article-reader.css"
+      href="<?= htmlspecialchars(assetUrl('backend/view/components/article-reader/article-reader.css'), ENT_QUOTES) ?>"
     />
     <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('css/templates.css'), ENT_QUOTES) ?>"/>
 
@@ -143,6 +143,11 @@ function assetUrl(string $path): string
         <div class="center-feed" id="center-feed">
           <!-- HOME -->
           <div class="view-panel active" id="view-home">
+            <div class="feed-tabs">
+              <div class="feed-tab active" data-feed-tab="recommended" onclick="IBlog.Dashboard.switchFeedTab(this,'recommended')">Recommended</div>
+              <div class="feed-tab" data-feed-tab="latest" onclick="IBlog.Dashboard.switchFeedTab(this,'latest')">Latest</div>
+              <div class="feed-tab" data-feed-tab="following" onclick="IBlog.Dashboard.switchFeedTab(this,'following')">Following</div>
+            </div>
             <div id="feed-container"></div>
             <button
               class="load-more-btn"
@@ -307,9 +312,15 @@ function assetUrl(string $path): string
            placeholder="Your article title…"
            oninput="IBlog.Views.analyzeQuality()"/>
 
-    <textarea class="writer-editor" id="article-editor"
+    <textarea class="writer-editor writer-editor-hidden" id="article-editor"
               placeholder="Start writing your article…"
               oninput="IBlog.Views.analyzeQuality()"></textarea>
+    <div class="writer-editor-rich" id="article-editor-rich"
+         contenteditable="true"
+         data-placeholder="Start writing your article…"></div>
+    <div class="writer-editor-hint">
+      Select text to make it bold, change its color, or highlight it.
+    </div>
 
     <div id="writer-preview-pane" class="wtr-preview-pane" style="display:none"></div>
 
@@ -336,6 +347,15 @@ function assetUrl(string $path): string
             <strong>Cover preview</strong>
             <span>Your image will appear here before you publish.</span>
           </div>
+        </div>
+        <div class="writer-cover-preview-toolbar" id="writer-cover-preview-toolbar" hidden>
+          <span class="writer-cover-preview-hint">
+            Drag the image to move it. Use your mouse wheel or touchpad to zoom.
+          </span>
+          <button type="button" class="writer-cover-reset-btn"
+                  onclick="IBlog.Views.resetCoverImageAdjustments()">
+            Reset framing
+          </button>
         </div>
         <input type="file" id="writer-img-file" accept="image/*"
                style="display:none" onchange="IBlog.Views.handleImgUpload(this)"/>
@@ -546,6 +566,7 @@ function assetUrl(string $path): string
 <script src="<?= htmlspecialchars(assetUrl('js/podcast.js'), ENT_QUOTES) ?>"></script>
 <script src="<?= htmlspecialchars(assetUrl('js/templates.js'), ENT_QUOTES) ?>"></script>
 <script src="<?= htmlspecialchars(assetUrl('js/feed.js'), ENT_QUOTES) ?>"></script>
+<script src="<?= htmlspecialchars(assetUrl('js/recommend.js'), ENT_QUOTES) ?>"></script>
 <script src="<?= htmlspecialchars(assetUrl('js/views.js'), ENT_QUOTES) ?>"></script>
 <script src="<?= htmlspecialchars(assetUrl('js/message-center.js'), ENT_QUOTES) ?>"></script>
 <script src="<?= htmlspecialchars(assetUrl('js/writer.js'), ENT_QUOTES) ?>"></script>

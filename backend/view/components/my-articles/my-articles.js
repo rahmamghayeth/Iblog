@@ -25,6 +25,58 @@ IBlog.MyArticles = (() => {
     return String(value || '').trim().toLowerCase();
   }
 
+  function _plainText(value) {
+    return String(value || '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function _loadArticleIntoWriter(article) {
+    if (!article) return false;
+
+    window.IBlog?.Views?.buildCategorySelect?.();
+    window.IBlog?.Writer?.init?.();
+
+    if (window.IBlog?.Writer?.loadArticle?.(article)) {
+      return true;
+    }
+
+    const title = document.getElementById('article-title');
+    const editor = document.getElementById('article-editor');
+    const rich = document.getElementById('article-editor-rich');
+    const category = document.getElementById('article-cat');
+    const tags = document.getElementById('article-tags');
+    const image = document.getElementById('article-img');
+
+    if (!title || !editor || !category || !tags || !image) return false;
+
+    title.value = article.title || '';
+    editor.value = article.body || '';
+    editor.dataset.editId = String(article.id ?? '');
+    editor.dataset.editStatus = String(article.status || 'published');
+    tags.value = Array.isArray(article.tags) ? article.tags.join(', ') : String(article.tags || '');
+    image.value = article.cover || article.img || '';
+
+    const currentCategory = article.category || article.cat || 'General';
+    if (Array.from(category.options || []).some((option) => option.value === currentCategory || option.textContent === currentCategory)) {
+      category.value = currentCategory;
+    }
+
+    if (window.IBlog?.Templates?.setSelected) {
+      window.IBlog.Templates.setSelected(article.templateId || null, { silent: true });
+    }
+
+    if (rich && window.IBlog?.Writer?.syncFromTextarea) {
+      window.IBlog.Writer.syncFromTextarea();
+    }
+
+    window.IBlog?.Writer?.setMode?.('edit');
+    window.IBlog?.Views?.refreshCoverPreview?.(image.value, image.value ? 'Cover image selected' : '');
+    window.IBlog?.Views?.analyzeQuality?.();
+    return true;
+  }
+
   function _matchesCurrentUser(article, user = _getUser()) {
     if (!article || !user) return false;
     const userId = user.id ?? user.userId ?? null;
@@ -48,7 +100,7 @@ IBlog.MyArticles = (() => {
       .map(article => ({
         id: String(article.id ?? ''),
         title: article.title || 'Untitled',
-        excerpt: article.excerpt || (article.body || '').substring(0, 120),
+        excerpt: article.excerpt || _plainText(article.body || '').substring(0, 120),
         body: article.body || '',
         category: article.category || article.cat || 'General',
         tags: article.tags || [],
@@ -58,7 +110,7 @@ IBlog.MyArticles = (() => {
         cover: article.cover || article.img || '',
         readTime: article.readTime || '1 min',
         quality: article.quality || 'med',
-        views: Number(article.views ?? ((article.likes || 0) * 8)),
+        views: Number(article.views || 0),
         likes: Number(article.likes || 0),
         status: article.status || 'published',
       }));
@@ -174,11 +226,11 @@ IBlog.MyArticles = (() => {
           </div>
 
           <div class="my-article-actions">
-            <button class="edit-btn-small" onclick="IBlog.MyArticles.edit('${_esc(article.id)}')">
+            <button type="button" class="edit-btn-small" data-action="edit-article" data-article-id="${_esc(article.id)}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
               ${status.actionLabel}
             </button>
-            <button class="delete-btn-small" onclick="IBlog.MyArticles.delete('${_esc(article.id)}')">
+            <button type="button" class="delete-btn-small" data-action="delete-article" data-article-id="${_esc(article.id)}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
               Delete
             </button>
@@ -232,12 +284,17 @@ IBlog.MyArticles = (() => {
   }
 
   async function deleteArticle(id) {
+    if (window.IBlog?.ArticleCard?.deleteArticle) {
+      await window.IBlog.ArticleCard.deleteArticle(/^\d+$/.test(String(id)) ? Number(id) : id);
+      return;
+    }
+
     if (!confirm('Delete this article? This action cannot be undone.')) return;
 
     try {
       if (/^\d+$/.test(String(id)) && window.IBlogArticleSync?.remove) {
         await window.IBlogArticleSync.remove(Number(id));
-        IBlog.Auth?.toast('Article deleted.', 'info');
+        IBlog.utils?.toast?.('Article deleted.', 'info');
         return;
       }
 
@@ -257,24 +314,33 @@ IBlog.MyArticles = (() => {
       if (container) _render(container, articles);
       window.IBlog?.Analytics?.init?.();
 
-      IBlog.Auth?.toast('Article deleted.', 'info');
+      IBlog.utils?.toast?.('Article deleted.', 'info');
     } catch (error) {
-      IBlog.Auth?.toast(error?.message || 'Could not delete this article.', 'error');
+      IBlog.utils?.toast?.(error?.message || 'Could not delete this article.', 'error');
     }
   }
 
   function editArticle(id) {
-    const article = _readArticles().find((item) => item.id === id);
-    if (!article) return;
-
-    if (window.IBlog?.Feed?.editArticle) {
-      window.IBlog.Feed.editArticle(/^\d+$/.test(String(id)) ? Number(id) : id);
+    if (window.IBlog?.ArticleCard?.editArticle) {
+      window.IBlog.ArticleCard.editArticle(/^\d+$/.test(String(id)) ? Number(id) : id);
       return;
     }
 
-    sessionStorage.setItem('iblog_edit_article', JSON.stringify(article));
-    IBlog.Auth?.toast('Loading article for editing...', 'info');
+    const article = _readArticles().find((item) => item.id === id);
+    if (!article) return;
+
+    if (window.IBlog?.Writer?.queueArticleEdit) {
+      window.IBlog.Writer.queueArticleEdit(article);
+    } else {
+      sessionStorage.setItem('iblog_edit_article', JSON.stringify(article));
+    }
+    _loadArticleIntoWriter(article);
+    IBlog.utils?.toast?.('Loading article for editing...', 'info');
     IBlog.Dashboard?.navigateTo('write');
+    requestAnimationFrame(() => {
+      _loadArticleIntoWriter(article);
+      setTimeout(() => _loadArticleIntoWriter(article), 80);
+    });
   }
 
   function publish(data) {
@@ -287,7 +353,7 @@ IBlog.MyArticles = (() => {
     const article = {
       id: Date.now().toString(),
       title: data.title || 'Untitled',
-      excerpt: (data.body || '').substring(0, 120) + '...',
+      excerpt: _plainText(data.body || '').substring(0, 120) + '...',
       body: data.body || '',
       category: data.category || 'General',
       tags: data.tags || '',
@@ -329,6 +395,23 @@ IBlog.MyArticles = (() => {
       if (currentPanel && currentPanel.classList.contains('active')) load();
     });
     observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class', 'style'] });
+  });
+
+  document.addEventListener('click', (event) => {
+    const actionButton = event.target.closest?.('[data-action][data-article-id]');
+    if (!actionButton) return;
+
+    const articleId = String(actionButton.dataset.articleId || '');
+    if (!articleId) return;
+
+    if (actionButton.dataset.action === 'edit-article') {
+      editArticle(articleId);
+      return;
+    }
+
+    if (actionButton.dataset.action === 'delete-article') {
+      deleteArticle(articleId);
+    }
   });
 
   return { load, delete: deleteArticle, edit: editArticle, publish, saveEdit };

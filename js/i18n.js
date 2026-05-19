@@ -85,14 +85,24 @@ IBlog.I18n = (() => {
       },
       settings: {
         title: 'Settings',
+        subtitle: 'Manage your account and preferences',
+        account: 'Account',
+        displayName: 'Display Name',
+        emailAddress: 'Email',
+        bio: 'Bio',
+        saveChanges: 'Save Changes',
         languageTitle: 'Display Language',
         languageBody: 'Choose one language and apply it across the main interface, landing page, feed cards, and seeded content.',
+        namePlaceholder: 'Your name',
+        emailPlaceholder: 'you@example.com',
+        bioPlaceholder: 'Tell your story...',
         premiumPlan: 'Premium Plan',
         freePlan: 'You are on the Free plan.',
         premiumPlanActive: 'You are on the Premium plan.',
         notifications: 'Notifications',
         newFollowers: 'New followers',
         articleLikes: 'Article likes',
+        weeklyDigest: 'Weekly digest',
       },
       myArticles: { subtitle: 'Published articles and private drafts saved from the writer.' },
       map: {
@@ -205,14 +215,24 @@ IBlog.I18n = (() => {
       },
       settings: {
         title: 'الإعدادات',
+        subtitle: 'إدارة حسابك وتفضيلاتك',
+        account: 'الحساب',
+        displayName: 'الاسم الظاهر',
+        emailAddress: 'البريد الإلكتروني',
+        bio: 'نبذة',
+        saveChanges: 'حفظ التغييرات',
         languageTitle: 'لغة العرض',
         languageBody: 'اختر لغة واحدة لتطبيقها على الواجهة الرئيسية والصفحة الافتتاحية وبطاقات المنشورات والمحتوى الافتراضي.',
+        namePlaceholder: 'اسمك',
+        emailPlaceholder: 'you@example.com',
+        bioPlaceholder: 'اكتب نبذة عنك...',
         premiumPlan: 'خطة بريميوم',
         freePlan: 'أنت على الخطة المجانية.',
         premiumPlanActive: 'أنت على خطة بريميوم.',
         notifications: 'الإشعارات',
         newFollowers: 'متابعون جدد',
         articleLikes: 'إعجابات المقالات',
+        weeklyDigest: 'الملخص الأسبوعي',
       },
       myArticles: { subtitle: 'المقالات المنشورة والمسودات الخاصة المحفوظة من أداة الكتابة.' },
       map: {
@@ -325,14 +345,24 @@ IBlog.I18n = (() => {
       },
       settings: {
         title: 'Parametres',
+        subtitle: 'Gerez votre compte et vos preferences',
+        account: 'Compte',
+        displayName: 'Nom affiche',
+        emailAddress: 'E-mail',
+        bio: 'Bio',
+        saveChanges: 'Enregistrer',
         languageTitle: 'Langue d\'affichage',
         languageBody: 'Choisissez une langue et appliquez-la a l\'interface principale, a la page d\'accueil, aux posts et au contenu initial.',
+        namePlaceholder: 'Votre nom',
+        emailPlaceholder: 'vous@example.com',
+        bioPlaceholder: 'Racontez votre histoire...',
         premiumPlan: 'Offre premium',
         freePlan: 'Vous etes sur l\'offre gratuite.',
         premiumPlanActive: 'Vous etes sur l\'offre premium.',
         notifications: 'Notifications',
         newFollowers: 'Nouveaux abonnes',
         articleLikes: 'Likes des articles',
+        weeklyDigest: 'Digest hebdomadaire',
       },
       myArticles: { subtitle: 'Articles publies et brouillons prives enregistres depuis l editeur.' },
       map: {
@@ -445,14 +475,24 @@ IBlog.I18n = (() => {
       },
       settings: {
         title: 'Einstellungen',
+        subtitle: 'Verwalte dein Konto und deine Einstellungen',
+        account: 'Konto',
+        displayName: 'Anzeigename',
+        emailAddress: 'E-Mail',
+        bio: 'Bio',
+        saveChanges: 'Aenderungen speichern',
         languageTitle: 'Anzeigesprache',
         languageBody: 'Waehle eine Sprache und wende sie auf die Hauptoberflaeche, die Startseite, die Feed-Karten und die Seed-Inhalte an.',
+        namePlaceholder: 'Dein Name',
+        emailPlaceholder: 'du@example.com',
+        bioPlaceholder: 'Erzaehl deine Geschichte...',
         premiumPlan: 'Premium-Plan',
         freePlan: 'Du nutzt den Free-Plan.',
         premiumPlanActive: 'Du nutzt den Premium-Plan.',
         notifications: 'Benachrichtigungen',
         newFollowers: 'Neue Follower',
         articleLikes: 'Artikel-Likes',
+        weeklyDigest: 'Wochenrueckblick',
       },
       myArticles: { subtitle: 'Veroeffentlichte Artikel und private Entwuerfe aus dem Editor.' },
       map: {
@@ -565,14 +605,24 @@ IBlog.I18n = (() => {
       },
       settings: {
         title: '設定',
+        subtitle: 'アカウントと設定を管理します',
+        account: 'アカウント',
+        displayName: '表示名',
+        emailAddress: 'メール',
+        bio: '自己紹介',
+        saveChanges: '変更を保存',
         languageTitle: '表示言語',
         languageBody: '選択した言語を、主要UI、ランディング、フィードカード、初期コンテンツに適用します。',
+        namePlaceholder: 'あなたの名前',
+        emailPlaceholder: 'you@example.com',
+        bioPlaceholder: 'あなたのストーリーを書いてください...',
         premiumPlan: 'プレミアムプラン',
         freePlan: '現在は無料プランです。',
         premiumPlanActive: '現在はプレミアムプランです。',
         notifications: '通知',
         newFollowers: '新しいフォロワー',
         articleLikes: '記事へのいいね',
+        weeklyDigest: '週間ダイジェスト',
       },
       myArticles: { subtitle: '公開済み記事とエディタから保存した非公開下書きです。' },
       map: {
@@ -1186,7 +1236,7 @@ IBlog.I18n = (() => {
       nav: { home: 'Inicio', features: 'Funciones', howItWorks: 'Como funciona', pricing: 'Precios', stories: 'Historias', premium: 'Premium', signIn: 'Entrar', getStarted: 'Empezar', theme: 'Cambiar tema' },
       hero: { kicker: 'Impulsado por la curiosidad', title: 'Una sala de lectura azul para <em>ideas que viajan</em>.', description: 'Escribe, descubre y conversa en un solo lugar con una identidad visual mas fuerte.', primary: 'Empezar a escribir', secondary: 'Explorar posts' },
       leftRail: { freeMember: 'Miembro gratuito', premiumMember: 'Miembro premium', main: 'Principal', dashboard: 'Panel', account: 'Cuenta', home: 'Inicio', notifications: 'Notificaciones', messages: 'Mensajes', saved: 'Guardados', globalMap: 'Mapa global', myArticles: 'Mis articulos', analytics: 'Analitica', communities: 'Comunidades', trends: 'Radar de tendencias', settings: 'Ajustes', signOut: 'Cerrar sesion', light: 'Claro', dark: 'Oscuro', language: 'Idioma', languageHint: 'Cambia una vez y toda la experiencia principal sigue.' },
-      settings: { title: 'Ajustes', languageTitle: 'Idioma de la interfaz', languageBody: 'Aplica el idioma a la pagina inicial, al feed y a la experiencia principal.', premiumPlan: 'Plan premium', freePlan: 'Estas en el plan gratuito.', premiumPlanActive: 'Estas en el plan premium.' },
+      settings: { title: 'Ajustes', subtitle: 'Gestiona tu cuenta y tus preferencias', account: 'Cuenta', displayName: 'Nombre visible', emailAddress: 'Correo', bio: 'Bio', saveChanges: 'Guardar cambios', languageTitle: 'Idioma de la interfaz', languageBody: 'Aplica el idioma a la pagina inicial, al feed y a la experiencia principal.', namePlaceholder: 'Tu nombre', emailPlaceholder: 'tu@email.com', bioPlaceholder: 'Cuenta tu historia...', premiumPlan: 'Plan premium', freePlan: 'Estas en el plan gratuito.', premiumPlanActive: 'Estas en el plan premium.', notifications: 'Notificaciones', newFollowers: 'Nuevos seguidores', articleLikes: 'Me gusta en articulos', weeklyDigest: 'Resumen semanal' },
       feed: { curated: 'Seleccionado para tu feed', curatedNote: 'Eleccion editorial', listenPodcast: 'Escuchar como podcast', premiumArticle: 'Articulo premium', highQuality: 'Alta calidad', goodQuality: 'Bueno' },
       writer: { title: 'Escribir un articulo', subtitle: 'Comparte tu conocimiento con la comunidad de IBlog', edit: 'Editar', preview: 'Vista previa', templates: 'Plantillas', templateLocked: 'Disenos profesionales para escribir con estructura.', unlockTemplates: 'Mejorar para desbloquear', articleTitle: 'Tu titulo...', articleBody: 'Empieza a escribir...', selectCategory: 'Selecciona una categoria', tags: 'Etiquetas: IA, producto...', quality: 'Calidad del articulo', readability: 'Legibilidad', depth: 'Profundidad', structure: 'Estructura', engagement: 'Interaccion' },
       misc: { readArticle: 'Leer articulo', featured: 'Destacado', trendingWeek: 'Tendencias de la semana', about: 'Acerca de', privacy: 'Privacidad', terms: 'Terminos' },
@@ -1195,7 +1245,7 @@ IBlog.I18n = (() => {
       nav: { home: 'Home', features: 'Funzioni', howItWorks: 'Come funziona', pricing: 'Prezzi', stories: 'Storie', premium: 'Premium', signIn: 'Accedi', getStarted: 'Inizia', theme: 'Cambia tema' },
       hero: { kicker: 'Guidato dalla curiosita', title: 'Una sala di lettura blu per <em>idee che viaggiano</em>.', description: 'Scrivi, scopri e discuti in un unico spazio con un look piu forte.', primary: 'Inizia a scrivere', secondary: 'Esplora i post' },
       leftRail: { freeMember: 'Membro gratuito', premiumMember: 'Membro premium', main: 'Principale', dashboard: 'Dashboard', account: 'Account', home: 'Home', notifications: 'Notifiche', messages: 'Messaggi', saved: 'Salvati', globalMap: 'Mappa globale', myArticles: 'I miei articoli', analytics: 'Analisi', communities: 'Community', trends: 'Radar trend', settings: 'Impostazioni', signOut: 'Esci', light: 'Chiaro', dark: 'Scuro', language: 'Lingua', languageHint: 'Cambia una volta e l esperienza principale segue.' },
-      settings: { title: 'Impostazioni', languageTitle: 'Lingua di visualizzazione', languageBody: 'Applica la lingua alla landing page, al feed e all interfaccia principale.', premiumPlan: 'Piano premium', freePlan: 'Sei nel piano gratuito.', premiumPlanActive: 'Sei nel piano premium.' },
+      settings: { title: 'Impostazioni', subtitle: 'Gestisci il tuo account e le preferenze', account: 'Account', displayName: 'Nome visibile', emailAddress: 'Email', bio: 'Bio', saveChanges: 'Salva modifiche', languageTitle: 'Lingua di visualizzazione', languageBody: 'Applica la lingua alla landing page, al feed e all interfaccia principale.', namePlaceholder: 'Il tuo nome', emailPlaceholder: 'tu@email.com', bioPlaceholder: 'Racconta la tua storia...', premiumPlan: 'Piano premium', freePlan: 'Sei nel piano gratuito.', premiumPlanActive: 'Sei nel piano premium.', notifications: 'Notifiche', newFollowers: 'Nuovi follower', articleLikes: 'Mi piace agli articoli', weeklyDigest: 'Riepilogo settimanale' },
       feed: { curated: 'Curato per il tuo feed', curatedNote: 'Scelta editoriale', listenPodcast: 'Ascolta come podcast', premiumArticle: 'Articolo premium', highQuality: 'Alta qualita', goodQuality: 'Buono' },
       writer: { title: 'Scrivi un articolo', subtitle: 'Condividi le tue idee con la community di IBlog', edit: 'Modifica', preview: 'Anteprima', templates: 'Template', templateLocked: 'Layout professionali per scrivere con struttura.', unlockTemplates: 'Sblocca con Premium', articleTitle: 'Titolo del tuo articolo...', articleBody: 'Inizia a scrivere...', selectCategory: 'Seleziona una categoria', tags: 'Tag: AI, design...', quality: 'Qualita dell articolo', readability: 'Leggibilita', depth: 'Profondita', structure: 'Struttura', engagement: 'Coinvolgimento' },
       misc: { readArticle: 'Leggi articolo', featured: 'In evidenza', trendingWeek: 'Trend della settimana', about: 'Info', privacy: 'Privacy', terms: 'Termini' },
@@ -1204,7 +1254,7 @@ IBlog.I18n = (() => {
       nav: { home: 'Inicio', features: 'Funcionalidades', howItWorks: 'Como funciona', pricing: 'Precos', stories: 'Historias', premium: 'Premium', signIn: 'Entrar', getStarted: 'Comecar', theme: 'Mudar tema' },
       hero: { kicker: 'Movido pela curiosidade', title: 'Uma sala de leitura azul para <em>ideias que viajam</em>.', description: 'Escreva, descubra e converse num unico lugar com uma identidade mais clara.', primary: 'Comecar a escrever', secondary: 'Explorar posts' },
       leftRail: { freeMember: 'Membro gratuito', premiumMember: 'Membro premium', main: 'Principal', dashboard: 'Painel', account: 'Conta', home: 'Inicio', notifications: 'Notificacoes', messages: 'Mensagens', saved: 'Guardados', globalMap: 'Mapa global', myArticles: 'Meus artigos', analytics: 'Analises', communities: 'Comunidades', trends: 'Radar de tendencias', settings: 'Definicoes', signOut: 'Terminar sessao', light: 'Claro', dark: 'Escuro', language: 'Idioma', languageHint: 'Muda uma vez e a experiencia principal acompanha.' },
-      settings: { title: 'Definicoes', languageTitle: 'Idioma de exibicao', languageBody: 'Aplica o idioma a landing page, ao feed e a interface principal.', premiumPlan: 'Plano premium', freePlan: 'Estas no plano gratuito.', premiumPlanActive: 'Estas no plano premium.' },
+      settings: { title: 'Definicoes', subtitle: 'Gere a tua conta e preferencias', account: 'Conta', displayName: 'Nome visivel', emailAddress: 'Email', bio: 'Bio', saveChanges: 'Guardar alteracoes', languageTitle: 'Idioma de exibicao', languageBody: 'Aplica o idioma a landing page, ao feed e a interface principal.', namePlaceholder: 'O teu nome', emailPlaceholder: 'tu@email.com', bioPlaceholder: 'Conta a tua historia...', premiumPlan: 'Plano premium', freePlan: 'Estas no plano gratuito.', premiumPlanActive: 'Estas no plano premium.', notifications: 'Notificacoes', newFollowers: 'Novos seguidores', articleLikes: 'Gostos nos artigos', weeklyDigest: 'Resumo semanal' },
       feed: { curated: 'Curado para o teu feed', curatedNote: 'Escolha editorial', listenPodcast: 'Ouvir como podcast', premiumArticle: 'Artigo premium', highQuality: 'Alta qualidade', goodQuality: 'Bom' },
       writer: { title: 'Escrever artigo', subtitle: 'Partilha o teu conhecimento com a comunidade IBlog', edit: 'Editar', preview: 'Previsualizar', templates: 'Modelos', templateLocked: 'Modelos profissionais para escrever com estrutura.', unlockTemplates: 'Fazer upgrade', articleTitle: 'Titulo do teu artigo...', articleBody: 'Comeca a escrever...', selectCategory: 'Seleciona uma categoria', tags: 'Etiquetas: IA, ciencia...', quality: 'Qualidade do artigo', readability: 'Legibilidade', depth: 'Profundidade', structure: 'Estrutura', engagement: 'Envolvimento' },
       misc: { readArticle: 'Ler artigo', featured: 'Destaque', trendingWeek: 'Tendencias da semana', about: 'Sobre', privacy: 'Privacidade', terms: 'Termos' },
@@ -1337,6 +1387,7 @@ IBlog.I18n = (() => {
     document.title = t('meta.title');
 
     document.querySelectorAll('.iblog-language-select').forEach((select) => {
+      select.innerHTML = languageOptionsMarkup();
       select.value = currentLocale;
       if (!select.dataset.bound) {
         select.addEventListener('change', (event) => setLocale(event.target.value));
@@ -1360,6 +1411,7 @@ IBlog.I18n = (() => {
     _text('#view-home .load-more-btn', t('actions.loadMore'));
     _text('#view-articles .view-header h1', t('leftRail.myArticles'));
     _text('#view-settings .view-header h1', t('settings.title'));
+    _text('#view-settings .view-header p', t('settings.subtitle'));
     _text('#view-write .view-header h1', t('writer.title'));
     _text('#view-write .view-header p', t('writer.subtitle'));
     _text('#wtr-edit-label', t('writer.edit'));
@@ -1381,42 +1433,59 @@ IBlog.I18n = (() => {
     _text('#premium-status-text', t((IBlog.state.currentUser?.plan === 'premium' || IBlog.state.currentUser?.isPremium) ? 'settings.premiumPlanActive' : 'settings.freePlan'));
     const articleTitle = document.getElementById('article-title');
     const articleEditor = document.getElementById('article-editor');
+    const articleEditorRich = document.getElementById('article-editor-rich');
     const articleTags = document.getElementById('article-tags');
+    const settingsLanguageSelect = document.getElementById('settings-language-select');
     if (articleTitle) articleTitle.placeholder = t('writer.articleTitle');
     if (articleEditor) articleEditor.placeholder = t('writer.articleBody');
+    if (articleEditorRich) articleEditorRich.setAttribute('data-placeholder', t('writer.articleBody'));
     if (articleTags) articleTags.placeholder = t('writer.tags');
+    if (settingsLanguageSelect) settingsLanguageSelect.setAttribute('aria-label', t('settings.languageTitle'));
+  }
+
+  function _safeRun(label, task) {
+    if (typeof task !== 'function') return;
+    try {
+      task();
+    } catch (error) {
+      console.warn(`I18n refresh skipped ${label}:`, error);
+    }
   }
 
   function refresh() {
     _applyRoot();
 
-    IBlog.LandingNav?.init?.();
-    IBlog.Hero?.init?.();
-    IBlog.Features?.init?.();
-    IBlog.Carousel?.init?.();
-    IBlog.Footer?.init?.();
+    _safeRun('landing nav', () => IBlog.LandingNav?.init?.());
+    _safeRun('hero', () => IBlog.Hero?.init?.());
+    _safeRun('features', () => IBlog.Features?.init?.());
+    _safeRun('carousel', () => IBlog.Carousel?.init?.());
+    _safeRun('footer', () => IBlog.Footer?.init?.());
 
     if (document.getElementById('dashboard')?.style.display !== 'none') {
-      IBlog.LeftRail?.init?.();
-      IBlog.Search?.init?.();
-      IBlog.Views?.buildCategorySelect?.();
-      IBlog.Views?.buildMyArticles?.();
-      IBlog.Views?.buildSaved?.();
-      IBlog.Views?.buildMessages?.();
-      IBlog.Communities?.init?.();
-      IBlog.Trends?.init?.();
-      IBlog.Analytics?.init?.();
-      IBlog.Notifications?.init?.();
-      IBlog.Profile?.renderCurrentView?.();
-      if (typeof initRightRail === 'function') initRightRail();
-      const activeFeed = String(document.querySelector('.feed-tab.active')?.textContent || 'foryou')
+      _safeRun('left rail', () => IBlog.LeftRail?.init?.());
+      _safeRun('search', () => IBlog.Search?.init?.());
+      _safeRun('writer category select', () => IBlog.Views?.buildCategorySelect?.());
+      _safeRun('my articles view', () => IBlog.Views?.buildMyArticles?.());
+      _safeRun('saved view', () => IBlog.Views?.buildSaved?.());
+      _safeRun('messages view', () => IBlog.Views?.buildMessages?.());
+      _safeRun('communities', () => IBlog.Communities?.init?.());
+      _safeRun('trend radar', () => IBlog.Trends?.init?.());
+      _safeRun('analytics', () => IBlog.Analytics?.init?.());
+      _safeRun('notifications', () => IBlog.Notifications?.init?.());
+      _safeRun('profile', () => IBlog.Profile?.renderCurrentView?.());
+      _safeRun('right rail', () => {
+        if (typeof initRightRail === 'function') initRightRail();
+      });
+      const activeFeed = String(document.querySelector('.feed-tab.active')?.dataset?.feedTab || document.querySelector('.feed-tab.active')?.textContent || 'recommended')
         .trim()
         .toLowerCase()
         .replace(/\s+/g, '');
-      IBlog.Feed?.build?.(['foryou', 'following', 'trending', 'latest'].includes(activeFeed) ? activeFeed : 'foryou');
+      _safeRun('feed', () => {
+        IBlog.Feed?.build?.(['recommended', 'following', 'latest'].includes(activeFeed) ? activeFeed : 'recommended');
+      });
     }
 
-    IBlog.Dashboard?.buildTicker?.();
+    _safeRun('dashboard ticker', () => IBlog.Dashboard?.buildTicker?.());
     _applyStaticText();
     window.dispatchEvent(new CustomEvent('iblog:locale-changed', { detail: { locale: currentLocale, dir: meta().dir } }));
   }

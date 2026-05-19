@@ -260,6 +260,19 @@ window.IBlogContentMeta = (() => {
 window.IBlogArticleSync = (() => {
   const API = 'backend/view/components/article/api-articles.php';
 
+  function _fallbackUser() {
+    if (window.IBlog?.state?.currentUser) return window.IBlog.state.currentUser;
+    try {
+      return JSON.parse(sessionStorage.getItem('user') || 'null');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function _currentUser() {
+    return window.IBlogSession?.getUser?.() || _fallbackUser();
+  }
+
   function _articleKey(article) {
     if (!article) return '';
     if (article.id !== undefined && article.id !== null && String(article.id) !== '') {
@@ -283,7 +296,7 @@ window.IBlogArticleSync = (() => {
   }
 
   async function _request(action, payload = {}) {
-    const currentUser = window.IBlogSession.getUser();
+    const currentUser = _currentUser();
     const response = await fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -312,9 +325,14 @@ window.IBlogArticleSync = (() => {
       : (Array.isArray(IBlog.state.articles) ? [...IBlog.state.articles] : []);
 
     const keyed = new Map();
-    [...baseArticles, ...remoteArticles].forEach((article) => {
+    baseArticles.forEach((article) => {
       const key = _articleKey(article);
-      if (!key || keyed.has(key)) return;
+      if (!key) return;
+      keyed.set(key, _normalizeArticle(article));
+    });
+    remoteArticles.forEach((article) => {
+      const key = _articleKey(article);
+      if (!key) return;
       keyed.set(key, _normalizeArticle(article));
     });
 
@@ -333,16 +351,19 @@ window.IBlogArticleSync = (() => {
     IBlog.Analytics?.init?.();
     IBlog.Activity?.init?.();
     IBlog.Profile?.renderCurrentView?.();
+    try {
+      window.dispatchEvent(new CustomEvent('iblog:articles-refreshed'));
+    } catch (_) {}
   }
 
   async function load() {
-    if (!window.IBlogSession.getUser()) {
+    if (!_currentUser()) {
       IBlog.state.articles = [];
       refreshUI();
       return IBlog.state.articles;
     }
 
-    const data = await _request('list');
+    const data = await _request('list', { page: 1, pageSize: 100 });
     mergeArticles(data.articles || [], { replace: true });
     refreshUI();
     return IBlog.state.articles;
@@ -376,8 +397,21 @@ window.IBlogArticleSync = (() => {
 window.IBlogSavedSync = (() => {
   const API = 'backend/view/components/article/api-articles.php';
 
+  function _fallbackUser() {
+    if (window.IBlog?.state?.currentUser) return window.IBlog.state.currentUser;
+    try {
+      return JSON.parse(sessionStorage.getItem('user') || 'null');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function _currentUser() {
+    return window.IBlogSession?.getUser?.() || _fallbackUser();
+  }
+
   async function _request(action, payload = {}) {
-    const currentUser = window.IBlogSession.getUser();
+    const currentUser = _currentUser();
     const response = await fetch(API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -414,7 +448,7 @@ window.IBlogSavedSync = (() => {
   }
 
   async function load(options = {}) {
-    if (!window.IBlogSession.getUser()) {
+    if (!_currentUser()) {
       applySavedState([]);
       if (!options.quiet) IBlog.Views?.buildSaved?.();
       return [];

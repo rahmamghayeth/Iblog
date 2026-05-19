@@ -81,12 +81,12 @@
 .testimonial-card--featured {
   background: var(--bg-card-featured);
   border-color: var(--border-featured);
-  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.12), 0 8px 32px rgba(212, 168, 67, 0.08);
+  box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.12), 0 8px 32px rgba(148, 163, 184, 0.12);
 }
 
 .testimonial-card--featured:hover {
-  border-color: rgba(212, 175, 55, 0.65);
-  box-shadow: 0 20px 48px rgba(212, 168, 67, 0.14);
+  border-color: rgba(148, 163, 184, 0.5);
+  box-shadow: 0 20px 48px rgba(148, 163, 184, 0.16);
 }
 
 /* stagger delays */
@@ -105,7 +105,7 @@
 }
 
 /* ── Stars ── */
-.stars {
+.testimonial-stars {
   font-size: 13px;
   color: var(--gold);
   letter-spacing: 2px;
@@ -130,62 +130,57 @@
 .testimonial-author {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
   margin-top: 6px;
 }
 
-.avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  flex-shrink: 0;
-  letter-spacing: 0.02em;
-}
-
-.avatar--purple { background: #6d4fa0; }
-.avatar--teal   { background: #2e8a75; }
-.avatar--brown  { background: #8b4a30; }
-.avatar--green  { background: #3a6e44; }
-.avatar--red    { background: #9c3b3b; }
-.avatar--blue   { background: #2e5a8a; }
-
-.author-info {
+.testimonial-identity {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 
-.author-name {
+.testimonial-name {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
   line-height: 1.2;
 }
 
-.author-role {
+.testimonial-role {
   font-size: 11.5px;
   color: var(--text-muted);
   line-height: 1.2;
 }
 
-.badge {
-  display: inline-block;
-  margin-top: 4px;
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+.testimonial-plan {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.plan-premium {
   color: var(--badge-text);
   background: var(--badge-bg);
-  border: 1px solid rgba(212, 168, 67, 0.25);
-  border-radius: 4px;
-  padding: 2px 7px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+}
+
+.plan-free {
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #dbe3ee;
 }
 
 /* ── Responsive ── */

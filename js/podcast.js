@@ -9,7 +9,7 @@ IBlog.Podcast = (() => {
   let _speaking  = false;
   let _paused    = false;
   let _currentId = null;
-  let _voicePref = 'default';
+  let _voicePref = 'female';
   let _voices    = [];
 
   const PLAY_SVG  = `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
@@ -34,17 +34,33 @@ IBlog.Podcast = (() => {
   /* ── Pick best voice ─────────────────────────────────── */
   function _pickVoice(pref) {
     if (!_voices.length) return null;
-    const eng = _voices.filter(v => v.lang && v.lang.startsWith('en'));
+    const eng = _voices.filter(v => v.lang && /^en([-_]|$)/i.test(v.lang || ''));
     const pool = eng.length ? eng : _voices;
+    const ranked = [...pool].sort((a, b) => _voiceScore(b, pref) - _voiceScore(a, pref));
+    return ranked[0] || pool[0] || null;
+  }
+
+  function _voiceScore(voice, pref) {
+    const name = String(voice?.name || '').toLowerCase();
+    const lang = String(voice?.lang || '').toLowerCase();
+    let score = /^en([-_]|$)/i.test(lang) ? 40 : 0;
+
+    if (/google|microsoft|natural|neural|premium|enhanced|apple|siri/i.test(name)) {
+      score += 30;
+    }
+
     if (pref === 'female') {
-      return pool.find(v => /zira|samantha|victoria|karen|moira|tessa|fiona|female/i.test(v.name))
-          || pool[0];
+      if (/aria|jenny|samantha|ava|emma|victoria|karen|moira|tessa|zira|libby|female/i.test(name)) score += 60;
+      if (/david|alex|daniel|mark|james|male/i.test(name)) score -= 20;
+    } else if (pref === 'male') {
+      if (/david|alex|daniel|mark|james|rishi|male/i.test(name)) score += 60;
+      if (/aria|jenny|samantha|ava|emma|victoria|karen|moira|tessa|zira|libby|female/i.test(name)) score -= 20;
+    } else {
+      if (/aria|jenny|samantha|ava|emma|victoria|karen|moira|tessa|zira|libby/i.test(name)) score += 20;
     }
-    if (pref === 'male') {
-      return pool.find(v => /david|alex|daniel|rishi|mark|james|male/i.test(v.name))
-          || pool[1] || pool[0];
-    }
-    return pool[0];
+
+    if (/compact|espeak|festival/i.test(name)) score -= 40;
+    return score;
   }
 
   /* ── Clean text ──────────────────────────────────────── */
@@ -95,8 +111,8 @@ IBlog.Podcast = (() => {
     await _loadVoices();
 
     _utterance       = new SpeechSynthesisUtterance(_getText(article));
-    _utterance.rate  = 0.92;
-    _utterance.pitch = 1.0;
+    _utterance.rate  = 0.88;
+    _utterance.pitch = 1.02;
     _utterance.lang  = 'en-US';
     const voice = _pickVoice(_voicePref);
     if (voice) _utterance.voice = voice;

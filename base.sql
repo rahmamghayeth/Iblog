@@ -13,6 +13,16 @@ CREATE TABLE users (
     createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE user_follow (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    followerId INT NOT NULL,
+    followedId INT NOT NULL,
+    createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_user_follow (followerId, followedId),
+    INDEX idx_user_follow_follower (followerId),
+    INDEX idx_user_follow_followed (followedId)
+);
+
 CREATE TABLE article (
     id INT AUTO_INCREMENT PRIMARY KEY,
     userId INT NOT NULL,

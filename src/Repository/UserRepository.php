@@ -12,6 +12,21 @@ final class UserRepository
     {
     }
 
+    private function ensureUserFollowTable(): void
+    {
+        $this->connection->exec(
+            "CREATE TABLE IF NOT EXISTS user_follow (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                followerId INT NOT NULL,
+                followedId INT NOT NULL,
+                createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_user_follow (followerId, followedId),
+                INDEX idx_user_follow_follower (followerId),
+                INDEX idx_user_follow_followed (followedId)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
+        );
+    }
+
     public function create(array $data): bool
     {
         $hash = password_hash((string) ($data['password'] ?? ''), PASSWORD_DEFAULT);
@@ -128,6 +143,111 @@ final class UserRepository
     {
         $stmt = $this->connection->prepare('DELETE FROM users WHERE id = :id');
         return $stmt->execute([':id' => $id]);
+    }
+
+    public function getFollowStats(int $userId): array
+    {
+        if ($userId <= 0) {
+            return ['followers' => 0, 'following' => 0];
+        }
+
+        $this->ensureUserFollowTable();
+
+        $followersStmt = $this->connection->prepare(
+            'SELECT COUNT(*) FROM user_follow WHERE followedId = :userId'
+        );
+        $followersStmt->execute([':userId' => $userId]);
+
+        $followingStmt = $this->connection->prepare(
+            'SELECT COUNT(*) FROM user_follow WHERE followerId = :userId'
+        );
+        $followingStmt->execute([':userId' => $userId]);
+
+        return [
+            'followers' => (int) $followersStmt->fetchColumn(),
+            'following' => (int) $followingStmt->fetchColumn(),
+        ];
+    }
+
+    public function getFollowingIds(int $userId): array
+    {
+        if ($userId <= 0) {
+            return [];
+        }
+
+        $this->ensureUserFollowTable();
+
+        $stmt = $this->connection->prepare(
+            'SELECT followedId FROM user_follow WHERE followerId = :userId ORDER BY followedId ASC'
+        );
+        $stmt->execute([':userId' => $userId]);
+
+        return array_map(
+            static fn (mixed $value): int => (int) $value,
+            $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []
+        );
+    }
+
+    public function isFollowing(int $followerId, int $followedId): bool
+    {
+        if ($followerId <= 0 || $followedId <= 0 || $followerId === $followedId) {
+            return false;
+        }
+
+        $this->ensureUserFollowTable();
+
+        $stmt = $this->connection->prepare(
+            'SELECT 1 FROM user_follow WHERE followerId = :followerId AND followedId = :followedId LIMIT 1'
+        );
+        $stmt->execute([
+            ':followerId' => $followerId,
+            ':followedId' => $followedId,
+        ]);
+
+        return (bool) $stmt->fetchColumn();
+    }
+
+    public function followUser(int $followerId, int $followedId): bool
+    {
+        if ($followerId <= 0 || $followedId <= 0 || $followerId === $followedId) {
+            return false;
+        }
+
+        if ($this->findById($followerId) === false || $this->findById($followedId) === false) {
+            return false;
+        }
+
+        $this->ensureUserFollowTable();
+
+        $stmt = $this->connection->prepare(
+            'INSERT IGNORE INTO user_follow (followerId, followedId, createdAt)
+             VALUES (:followerId, :followedId, CURRENT_TIMESTAMP)'
+        );
+        $stmt->execute([
+            ':followerId' => $followerId,
+            ':followedId' => $followedId,
+        ]);
+
+        return $stmt->rowCount() > 0 || $this->isFollowing($followerId, $followedId);
+    }
+
+    public function unfollowUser(int $followerId, int $followedId): bool
+    {
+        if ($followerId <= 0 || $followedId <= 0 || $followerId === $followedId) {
+            return false;
+        }
+
+        $this->ensureUserFollowTable();
+
+        $stmt = $this->connection->prepare(
+            'DELETE FROM user_follow WHERE followerId = :followerId AND followedId = :followedId'
+        );
+        $stmt->execute([
+            ':followerId' => $followerId,
+            ':followedId' => $followedId,
+        ]);
+
+        return true;
     }
 
     public function upgradeToPremium(int $userId, string $method = 'card', float $amount = 9.0): bool

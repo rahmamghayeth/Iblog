@@ -88,9 +88,15 @@
       <input type="file" id="writer-img-upload" accept="image/*"
              style="display:none" onchange="IBlog.Views.handleImgUpload(this)"/>
     </div>
-    <textarea class="writer-editor" id="article-editor"
+    <textarea class="writer-editor writer-editor-hidden" id="article-editor"
               placeholder="Start writing your article…"
               oninput="IBlog.Views.analyzeQuality()"></textarea>
+    <div class="writer-editor-rich" id="article-editor-rich"
+         contenteditable="true"
+         data-placeholder="Start writing your article…"></div>
+    <div class="writer-editor-hint">
+      Select text to make it bold, change its color, or highlight it.
+    </div>
 
     <div id="writer-preview-pane" class="wtr-preview-pane" style="display:none"></div>
 

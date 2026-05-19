@@ -26,35 +26,35 @@
 <div class="view-panel" id="view-settings">
 
   <div class="view-header">
-    <h1>Settings</h1>
-    <p class="view-subtitle">Manage your account and preferences</p>
+    <h1 data-i18n="settings.title">Settings</h1>
+    <p class="view-subtitle" data-i18n="settings.subtitle">Manage your account and preferences</p>
   </div>
 
   <div class="section-card">
-    <h3>Account</h3>
+    <h3 data-i18n="settings.account">Account</h3>
     <div class="form-group">
-      <label>Display Name</label>
-      <input type="text" id="settings-name" placeholder="Your name">
+      <label data-i18n="settings.displayName">Display Name</label>
+      <input type="text" id="settings-name" placeholder="Your name" data-i18n-placeholder="settings.namePlaceholder">
     </div>
     <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="settings-email" placeholder="you@example.com">
+      <label data-i18n="settings.emailAddress">Email</label>
+      <input type="email" id="settings-email" placeholder="you@example.com" data-i18n-placeholder="settings.emailPlaceholder">
     </div>
     <div class="form-group">
-      <label>Bio</label>
-      <textarea style="resize:vertical" rows="3"
-                placeholder="Tell your story…"></textarea>
+      <label data-i18n="settings.bio">Bio</label>
+      <textarea id="settings-bio" style="resize:vertical" rows="3"
+                placeholder="Tell your story…" data-i18n-placeholder="settings.bioPlaceholder"></textarea>
     </div>
     <button class="btn btn-primary"
             onclick="IBlog.utils.toast('Settings saved.', 'success')">
-      Save Changes
+      <span data-i18n="settings.saveChanges">Save Changes</span>
     </button>
   </div>
 
   <div class="section-card">
     <div class="flex-between">
       <div>
-        <h3>Premium Plan</h3>
+        <h3 data-i18n="settings.premiumPlan">Premium Plan</h3>
         <p id="premium-status-text"
            style="font-size:13px;color:var(--text2);margin-top:4px">
           You are on the Free plan.
@@ -69,11 +69,17 @@
   </div>
 
   <div class="section-card">
-    <h3 style="margin-bottom:14px">Notifications</h3>
+    <h3 id="settings-language-title" data-i18n="settings.languageTitle">Display Language</h3>
+    <p id="settings-language-body" style="font-size:14px;color:var(--text2);margin:10px 0 16px" data-i18n="settings.languageBody">
+      Choose one language and apply it across the main interface, landing page, feed cards, and seeded content.
+    </p>
+    <select id="settings-language-select" class="iblog-language-select" aria-label="Display Language" style="width:100%;margin-bottom:24px"></select>
+
+    <h3 style="margin-bottom:14px" data-i18n="settings.notifications">Notifications</h3>
     <div style="display:flex;flex-direction:column;gap:13px">
 
       <div class="flex-between">
-        <span style="font-size:14px">New followers</span>
+        <span style="font-size:14px" data-i18n="settings.newFollowers">New followers</span>
         <label class="toggle-switch">
           <input type="checkbox" checked>
           <div class="toggle-track"></div>
@@ -81,7 +87,7 @@
       </div>
 
       <div class="flex-between">
-        <span style="font-size:14px">Article likes</span>
+        <span style="font-size:14px" data-i18n="settings.articleLikes">Article likes</span>
         <label class="toggle-switch">
           <input type="checkbox" checked>
           <div class="toggle-track"></div>
@@ -89,7 +95,7 @@
       </div>
 
       <div class="flex-between">
-        <span style="font-size:14px">Weekly digest</span>
+        <span style="font-size:14px" data-i18n="settings.weeklyDigest">Weekly digest</span>
         <label class="toggle-switch">
           <input type="checkbox" checked>
           <div class="toggle-track"></div>

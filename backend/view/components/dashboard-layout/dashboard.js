@@ -10,8 +10,8 @@ IBlog.Dashboard = (() => {
 
   function _currentFeedTab() {
     const active = document.querySelector('.feed-tab.active');
-    const key = String(active?.textContent || 'For You').trim().toLowerCase().replace(/\s+/g, '');
-    return ['foryou', 'following', 'trending', 'latest'].includes(key) ? key : 'foryou';
+    const key = String(active?.dataset?.feedTab || active?.textContent || 'recommended').trim().toLowerCase().replace(/\s+/g, '');
+    return ['recommended', 'following', 'latest'].includes(key) ? key : 'recommended';
   }
 
   function _bindSessionRefresh() {

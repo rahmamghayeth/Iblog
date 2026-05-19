@@ -128,10 +128,17 @@ final class RepositoryCoverageTest extends TestCase
             'isPremium' => 0,
             'isAdmin' => 0,
         ]));
+        $this->assertTrue($repo->create([
+            'name' => 'Second User',
+            'email' => 'second@example.com',
+            'password' => 'StrongPass1!',
+            'plan' => 'free',
+            'isPremium' => 0,
+            'isAdmin' => 0,
+        ]));
 
         $allUsers = $repo->findAll();
-        $this->assertCount(1, $allUsers);
-        $this->assertSame('direct@example.com', $allUsers[0]['email'] ?? null);
+        $this->assertCount(2, $allUsers);
 
         $matches = $repo->search('Direct');
         $this->assertCount(1, $matches);
@@ -141,6 +148,10 @@ final class RepositoryCoverageTest extends TestCase
         $this->assertIsArray($user);
         $userId = (int) ($user['id'] ?? 0);
         $this->assertGreaterThan(0, $userId);
+        $secondUser = $repo->findByEmail('second@example.com');
+        $this->assertIsArray($secondUser);
+        $secondUserId = (int) ($secondUser['id'] ?? 0);
+        $this->assertGreaterThan(0, $secondUserId);
 
         $this->assertIsArray($repo->authenticate('direct@example.com', 'StrongPass1!'));
         $this->assertFalse($repo->authenticate('direct@example.com', 'WrongPass!'));
@@ -172,6 +183,14 @@ final class RepositoryCoverageTest extends TestCase
 
         $subscriptionCount = (int) $pdo->query('SELECT COUNT(*) FROM subscription')->fetchColumn();
         $this->assertSame(1, $subscriptionCount);
+
+        $this->assertTrue($repo->followUser($userId, $secondUserId));
+        $this->assertTrue($repo->isFollowing($userId, $secondUserId));
+        $this->assertSame(['followers' => 1, 'following' => 0], $repo->getFollowStats($secondUserId));
+        $this->assertSame(['followers' => 0, 'following' => 1], $repo->getFollowStats($userId));
+        $this->assertSame([$secondUserId], $repo->getFollowingIds($userId));
+        $this->assertTrue($repo->unfollowUser($userId, $secondUserId));
+        $this->assertFalse($repo->isFollowing($userId, $secondUserId));
 
         $this->assertTrue($repo->delete($userId));
         $this->assertFalse($repo->findById($userId));

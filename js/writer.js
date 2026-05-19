@@ -1,170 +1,19 @@
-/* ══════════════════════════════════════════════════════════
-   IBlog — Writer  v2  (all-in-one)
-   Preview toggle · Live render · WYSIWYG · Image upload
-   Place in: js/writer.js
-   ══════════════════════════════════════════════════════════ */
-
 IBlog.Writer = (() => {
-
-  let _mode      = 'edit';
-  let _debounce  = null;
-  let _toolbar   = null;
-  let _activeEl  = null;
-  let _imgInput  = null;
+  let _mode = 'edit';
+  let _debounce = null;
+  let _toolbar = null;
+  let _imgInput = null;
   let _imgTarget = null;
+  let _savedRange = null;
+  let _selectionBound = false;
+  let _queuedArticle = null;
 
-  /* ── expose mode for templates.js ── */
-  Object.defineProperty(IBlog.Writer || {}, '_mode', { get: () => _mode });
-
-  /* ══════════════════════════════════════════════════════
-     init()
-     ══════════════════════════════════════════════════════ */
-  function init() {
-    _buildFloatingToolbar();
-    _buildImageInput();
-    _wireEditorEvents();
-    _patchTemplateSelector();
-    window.IBlog?.Views?.refreshCoverPreview?.(
-      document.getElementById('article-img')?.value?.trim() || '',
-      document.getElementById('writer-cover-name')?.textContent?.trim() || ''
-    );
+  function _hiddenEditor() {
+    return document.getElementById('article-editor');
   }
 
-  /* ── Wire real-time input ────────────────────────────── */
-  function _wireEditorEvents() {
-    document.getElementById('article-editor')
-      ?.addEventListener('input', _scheduleRender);
-    document.getElementById('article-title')
-      ?.addEventListener('input', _scheduleRender);
-    document.getElementById('article-cat')
-      ?.addEventListener('change', _scheduleRender);
-  }
-
-  function _scheduleRender() {
-    if (_mode !== 'preview') return;
-    clearTimeout(_debounce);
-    _debounce = setTimeout(_renderNow, 150);
-  }
-
-  /* ── Patch template selector ─────────────────────────── */
-  function _patchTemplateSelector() {
-    if (IBlog.Templates?._writerPatched) return;
-    if (!IBlog.Templates) return;
-    IBlog.Templates._writerPatched = true;
-    const orig = IBlog.Templates.selectTemplate.bind(IBlog.Templates);
-    IBlog.Templates.selectTemplate = function(id, el) {
-      orig(id, el);
-      if (_mode === 'preview') _renderNow();
-    };
-  }
-
-  /* ══════════════════════════════════════════════════════
-     setMode('edit' | 'preview')
-     ══════════════════════════════════════════════════════ */
-  function setMode(mode) {
-    _mode = mode;
-    const editor   = document.getElementById('article-editor');
-    const titleEl  = document.getElementById('article-title');
-    const metaEl   = document.querySelector('.writer-meta');
-    const qaEl     = document.querySelector('.quality-analyzer');
-    const actEl    = document.querySelector('#writer-edit-zone > div:last-child');
-    const pane     = document.getElementById('writer-preview-pane');
-    const editBtn  = document.getElementById('wtr-edit-btn');
-    const prevBtn  = document.getElementById('wtr-preview-btn');
-
-    if (mode === 'preview') {
-      if (editor)  editor.style.display  = 'none';
-      if (titleEl) titleEl.style.display = 'none';
-      if (metaEl)  metaEl.style.display  = 'none';
-      if (qaEl)    qaEl.style.display    = 'none';
-      if (pane)    pane.style.display    = 'block';
-      editBtn?.classList.remove('active');
-      prevBtn?.classList.add('active');
-      _renderNow();
-    } else {
-      if (_activeEl) _deactivate(_activeEl);
-      if (_toolbar)  _toolbar.style.display = 'none';
-      if (editor)  editor.style.display  = '';
-      if (titleEl) titleEl.style.display = '';
-      if (metaEl)  metaEl.style.display  = '';
-      if (qaEl)    qaEl.style.display    = '';
-      if (pane)    pane.style.display    = 'none';
-      prevBtn?.classList.remove('active');
-      editBtn?.classList.add('active');
-    }
-  }
-
-  /* ══════════════════════════════════════════════════════
-     _renderNow() — build preview from editor content
-     ══════════════════════════════════════════════════════ */
-  function _renderNow() {
-    const pane = document.getElementById('writer-preview-pane');
-    if (!pane) return;
-
-    const title   = document.getElementById('article-title')?.value?.trim() || '';
-    const body    = document.getElementById('article-editor')?.value?.trim() || '';
-    const cat     = document.getElementById('article-cat')?.value || 'General';
-    const tagsRaw = document.getElementById('article-tags')?.value || '';
-    const imgUrl  = document.getElementById('article-img')?.value?.trim() || '';
-    const user    = IBlog.state.currentUser || { name: 'You' };
-
-    if (!title && !body) {
-      pane.innerHTML = `
-        <div class="wtr-empty">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-               width="38" height="38">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-          <p>Start writing to see your preview</p>
-          <small>Double-click any text in the preview to edit it directly</small>
-        </div>`;
-      return;
-    }
-
-    const article = {
-      id: 'preview', title, body,
-      excerpt:    body.substring(0,200),
-      author:     user.name,
-      cat, category: cat,
-      img:        imgUrl || null,
-      cover:      imgUrl || null,
-      readTime:   _readTime(body),
-      date:       new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-      tags:       tagsRaw.split(',').map(t=>t.trim()).filter(Boolean),
-      templateId: IBlog.Templates?.selectedId() || null,
-    };
-
-    const tplHTML = IBlog.Templates?.renderForReader(article);
-
-    if (tplHTML) {
-      const tplName = IBlog.Templates.get(article.templateId)?.name || '';
-      pane.innerHTML = `
-        <div class="wtr-preview-bar">
-          <span>${tplName} — double-click any text to edit</span>
-          <span class="wtr-live-dot">Live</span>
-        </div>
-        <div class="wtr-preview-scroll">${tplHTML}</div>`;
-    } else {
-      /* Plain preview */
-      const paras = body.split('\n\n').filter(p=>p.trim());
-      pane.innerHTML = `
-        <div class="wtr-preview-bar">
-          <span>Plain preview — double-click any text to edit</span>
-          <span class="wtr-live-dot">Live</span>
-        </div>
-        <div class="wtr-preview-scroll wtr-plain">
-          ${imgUrl?`<div class="wtr-plain-cover" style="background-image:url('${imgUrl}')"></div>`:''}
-          <div class="wtr-plain-cat">${cat}</div>
-          <h1 class="wtr-plain-title">${title}</h1>
-          <div class="wtr-plain-meta">By <strong>${user.name}</strong> · ${article.readTime} · ${article.date}</div>
-          <hr class="wtr-plain-rule"/>
-          ${paras.map((p,i)=>_renderPlainBlock(p, i)).join('')}
-          ${article.tags.length?`<div class="wtr-plain-tags">${article.tags.map(t=>`<span>${t}</span>`).join('')}</div>`:''}
-        </div>`;
-    }
-
-    setTimeout(_initWYSIWYG, 60);
+  function _richEditor() {
+    return document.getElementById('article-editor-rich');
   }
 
   function _escapeHtml(value) {
@@ -175,10 +24,279 @@ IBlog.Writer = (() => {
       .replace(/"/g, '&quot;');
   }
 
+  function _looksLikeHtml(value) {
+    return /<(p|div|br|strong|b|em|i|u|span|mark|img|figure|figcaption|blockquote|h[1-6]|ul|ol|li)\b/i.test(String(value || ''));
+  }
+
+  function _plainTextFromHtml(value) {
+    const scratch = document.createElement('div');
+    scratch.innerHTML = String(value || '');
+    return String(scratch.textContent || scratch.innerText || '')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim();
+  }
+
+  function _convertLegacyToHtml(value) {
+    const blocks = String(value || '')
+      .split(/\n{2,}/)
+      .map((block) => block.trim())
+      .filter(Boolean);
+
+    if (!blocks.length) return '';
+
+    return blocks.map((block) => {
+      const imageMatch = block.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+      if (imageMatch) {
+        return `<figure><img src="${_escapeHtml(imageMatch[2])}" alt="${_escapeHtml(imageMatch[1] || 'Article image')}">${imageMatch[1] ? `<figcaption>${_escapeHtml(imageMatch[1])}</figcaption>` : ''}</figure>`;
+      }
+      if (block.startsWith('## ')) return `<h2>${_escapeHtml(block.slice(3))}</h2>`;
+      if (block.startsWith('# ')) return `<h1>${_escapeHtml(block.slice(2))}</h1>`;
+      if (block.startsWith('> ')) return `<blockquote>${_escapeHtml(block.slice(2))}</blockquote>`;
+      return `<p>${_escapeHtml(block).replace(/\n/g, '<br>')}</p>`;
+    }).join('');
+  }
+
+  function _normalizeRichHtml(value) {
+    const scratch = document.createElement('div');
+    scratch.innerHTML = String(value || '').trim();
+    scratch.querySelectorAll('div').forEach((node) => {
+      const parent = node.parentElement;
+      if (!parent || parent === scratch || parent.tagName === 'DIV') {
+        const replacement = document.createElement('p');
+        replacement.innerHTML = node.innerHTML || '<br>';
+        node.replaceWith(replacement);
+      }
+    });
+    return scratch.innerHTML.trim();
+  }
+
+  function _syncTextareaFromRich() {
+    const hidden = _hiddenEditor();
+    const rich = _richEditor();
+    if (!hidden || !rich) return;
+    hidden.value = _normalizeRichHtml(rich.innerHTML);
+  }
+
+  function _syncRichFromTextarea(force = false) {
+    const hidden = _hiddenEditor();
+    const rich = _richEditor();
+    if (!hidden || !rich) return;
+    if (!force && rich.dataset.hydrated === '1') return;
+    const value = String(hidden.value || '').trim();
+    rich.innerHTML = value ? (_looksLikeHtml(value) ? value : _convertLegacyToHtml(value)) : '';
+    rich.dataset.hydrated = '1';
+  }
+
+  function _scheduleRender() {
+    if (_mode !== 'preview') return;
+    clearTimeout(_debounce);
+    _debounce = setTimeout(_renderNow, 120);
+  }
+
+  function _saveSelection() {
+    const rich = _richEditor();
+    const selection = window.getSelection();
+    if (!rich || !selection || !selection.rangeCount) return;
+    const range = selection.getRangeAt(0);
+    if (!rich.contains(range.commonAncestorContainer)) return;
+    _savedRange = range.cloneRange();
+  }
+
+  function _restoreSelection() {
+    if (!_savedRange) return false;
+    const selection = window.getSelection();
+    if (!selection) return false;
+    selection.removeAllRanges();
+    selection.addRange(_savedRange);
+    return true;
+  }
+
+  function _hideToolbar() {
+    if (_toolbar) _toolbar.style.display = 'none';
+  }
+
+  function _showToolbarFromRect(rect) {
+    if (!_toolbar || !rect) return;
+    const sy = window.scrollY;
+    const sx = window.scrollX;
+    const height = _toolbar.offsetHeight || 42;
+    const width = _toolbar.offsetWidth || 300;
+    let top = rect.top + sy - height - 12;
+    let left = rect.left + sx + (rect.width / 2) - (width / 2);
+    if (top < sy + 8) top = rect.bottom + sy + 10;
+    if (left < sx + 8) left = sx + 8;
+    if (left + width > sx + window.innerWidth - 8) left = sx + window.innerWidth - width - 8;
+    _toolbar.style.top = `${top}px`;
+    _toolbar.style.left = `${left}px`;
+    _toolbar.style.display = 'flex';
+  }
+
+  function _updateToolbarState() {
+    if (!_toolbar) return;
+    ['bold', 'italic', 'underline'].forEach((cmd) => {
+      _toolbar.querySelector(`[data-cmd="${cmd}"]`)
+        ?.classList.toggle('active', document.queryCommandState(cmd));
+    });
+  }
+
+  function _handleSelectionChange() {
+    const rich = _richEditor();
+    const selection = window.getSelection();
+    if (!rich || !selection || !selection.rangeCount) {
+      _hideToolbar();
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (!rich.contains(range.commonAncestorContainer) || selection.isCollapsed) {
+      _hideToolbar();
+      return;
+    }
+
+    _showToolbarFromRect(range.getBoundingClientRect());
+    _updateToolbarState();
+  }
+
+  function _patchTemplateSelector() {
+    if (IBlog.Templates?._writerPatched || !IBlog.Templates) return;
+    IBlog.Templates._writerPatched = true;
+    const original = IBlog.Templates.selectTemplate.bind(IBlog.Templates);
+    IBlog.Templates.selectTemplate = function(id, el) {
+      original(id, el);
+      _scheduleRender();
+    };
+  }
+
+  function _ensureRichEditor() {
+    const hidden = _hiddenEditor();
+    const rich = _richEditor();
+    if (!hidden || !rich) return;
+
+    _syncRichFromTextarea();
+
+    if (rich.dataset.bound === '1') return;
+    rich.dataset.bound = '1';
+
+    rich.addEventListener('input', () => {
+      _syncTextareaFromRich();
+      window.IBlog?.Views?.analyzeQuality?.();
+      _scheduleRender();
+    });
+    rich.addEventListener('focus', () => {
+      _saveSelection();
+      _handleSelectionChange();
+    });
+    rich.addEventListener('mouseup', () => {
+      _saveSelection();
+      _handleSelectionChange();
+    });
+    rich.addEventListener('keyup', () => {
+      _saveSelection();
+      _handleSelectionChange();
+    });
+    rich.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (!_toolbar?.matches(':focus-within')) _hideToolbar();
+      }, 100);
+    });
+    rich.addEventListener('paste', (event) => {
+      event.preventDefault();
+      const text = event.clipboardData?.getData('text/plain') || '';
+      document.execCommand('insertText', false, text);
+    });
+
+    if (!_selectionBound) {
+      document.addEventListener('mousedown', (event) => {
+        if (_toolbar?.contains(event.target) || rich.contains(event.target)) return;
+        _hideToolbar();
+      });
+      document.addEventListener('selectionchange', () => {
+        if (document.activeElement === rich || rich.contains(document.activeElement)) {
+          _saveSelection();
+          _handleSelectionChange();
+        }
+      });
+      _selectionBound = true;
+    }
+  }
+
+  function init() {
+    _buildFloatingToolbar();
+    _buildImageInput();
+    _ensureRichEditor();
+    _patchTemplateSelector();
+    document.execCommand?.('defaultParagraphSeparator', false, 'p');
+
+    window.IBlog?.Views?.refreshCoverPreview?.(
+      document.getElementById('article-img')?.value?.trim() || '',
+      document.getElementById('writer-cover-name')?.textContent?.trim() || ''
+    );
+
+    const title = document.getElementById('article-title');
+    const category = document.getElementById('article-cat');
+    if (title && title.dataset.bound !== '1') {
+      title.dataset.bound = '1';
+      title.addEventListener('input', _scheduleRender);
+    }
+    if (category && category.dataset.bound !== '1') {
+      category.dataset.bound = '1';
+      category.addEventListener('change', _scheduleRender);
+    }
+
+    const pending = _consumeQueuedArticle();
+    if (pending) {
+      loadArticle(pending);
+    } else {
+      _syncRichFromTextarea(true);
+      if (_mode === 'preview') _renderNow();
+    }
+  }
+
+  function setMode(mode) {
+    _mode = mode;
+    const hidden = _hiddenEditor();
+    const rich = _richEditor();
+    const title = document.getElementById('article-title');
+    const meta = document.querySelector('.writer-meta');
+    const qa = document.querySelector('.quality-analyzer');
+    const pane = document.getElementById('writer-preview-pane');
+    const hint = document.querySelector('.writer-editor-hint');
+    const editBtn = document.getElementById('wtr-edit-btn');
+    const previewBtn = document.getElementById('wtr-preview-btn');
+
+    if (mode === 'preview') {
+      _syncTextareaFromRich();
+      if (rich) rich.style.display = 'none';
+      if (hidden) hidden.style.display = 'none';
+      if (title) title.style.display = 'none';
+      if (meta) meta.style.display = 'none';
+      if (qa) qa.style.display = 'none';
+      if (hint) hint.style.display = 'none';
+      if (pane) pane.style.display = 'block';
+      editBtn?.classList.remove('active');
+      previewBtn?.classList.add('active');
+      _hideToolbar();
+      _renderNow();
+      return;
+    }
+
+    if (rich) rich.style.display = '';
+    if (hidden) hidden.style.display = 'none';
+    if (title) title.style.display = '';
+    if (meta) meta.style.display = '';
+    if (qa) qa.style.display = '';
+    if (hint) hint.style.display = '';
+    if (pane) pane.style.display = 'none';
+    previewBtn?.classList.remove('active');
+    editBtn?.classList.add('active');
+    _hideToolbar();
+  }
+
   function _renderPlainBlock(paragraph, index) {
     const trimmed = String(paragraph || '').trim();
     const imageMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
-
     if (imageMatch) {
       return `
         <figure class="wtr-plain-inline-image">
@@ -186,84 +304,95 @@ IBlog.Writer = (() => {
           ${imageMatch[1] ? `<figcaption>${_escapeHtml(imageMatch[1])}</figcaption>` : ''}
         </figure>`;
     }
-
     if (trimmed.startsWith('## ')) return `<h2 class="wtr-plain-h2">${_escapeHtml(trimmed.slice(3))}</h2>`;
-    if (trimmed.startsWith('# '))  return `<h1 class="wtr-plain-h1">${_escapeHtml(trimmed.slice(2))}</h1>`;
-    return `<p class="wtr-plain-p ${index===0?'wtr-lede':''}">${_escapeHtml(trimmed)}</p>`;
+    if (trimmed.startsWith('# ')) return `<h1 class="wtr-plain-h1">${_escapeHtml(trimmed.slice(2))}</h1>`;
+    if (trimmed.startsWith('> ')) return `<blockquote>${_escapeHtml(trimmed.slice(2))}</blockquote>`;
+    return `<p class="wtr-plain-p ${index === 0 ? 'wtr-lede' : ''}">${_escapeHtml(trimmed)}</p>`;
   }
 
-  /* ══════════════════════════════════════════════════════
-     WYSIWYG
-     ══════════════════════════════════════════════════════ */
-  function _initWYSIWYG() {
+  function _renderNow() {
     const pane = document.getElementById('writer-preview-pane');
-    if (!pane) return;
+    const rich = _richEditor();
+    if (!pane || !rich) return;
 
-    /* Text elements — double-click to edit */
-    const textSel = [
-      '[data-field]',
-      'p','h1','h2','h3','h4','blockquote',
-      '.wtr-plain-title','.wtr-plain-p','.wtr-plain-h1','.wtr-plain-h2',
-    ].join(',');
+    _syncTextareaFromRich();
+    const title = document.getElementById('article-title')?.value?.trim() || '';
+    const body = _hiddenEditor()?.value?.trim() || '';
+    const cat = document.getElementById('article-cat')?.value || 'General';
+    const tags = (document.getElementById('article-tags')?.value || '')
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+    const imgUrl = document.getElementById('article-img')?.value?.trim() || '';
+    const user = IBlog.state.currentUser || { name: 'You' };
+    const plainBody = _plainTextFromHtml(body);
 
-    pane.querySelectorAll(textSel).forEach(el => {
-      if (el.dataset.wired) return;
-      el.dataset.wired = '1';
-      el.style.cursor  = 'text';
-      el.addEventListener('mouseenter', () => { if (el.contentEditable!=='true') el.classList.add('wtr-hoverable'); });
-      el.addEventListener('mouseleave', () => el.classList.remove('wtr-hoverable'));
-      el.addEventListener('dblclick',   e  => { e.stopPropagation(); _activate(el); });
-      el.addEventListener('blur',       ()  => setTimeout(()=>{ if(!_toolbar?.matches(':focus-within')) _deactivate(el); },160));
-      el.addEventListener('input',      _syncBack);
-    });
+    if (!title && !plainBody) {
+      pane.innerHTML = `
+        <div class="wtr-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+               width="38" height="38">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <p>Start writing to see your preview</p>
+          <small>Use the inline toolbar in Edit mode to style selected text.</small>
+        </div>`;
+      return;
+    }
 
-    /* Cover / photo areas */
-    pane.querySelectorAll('.mag-cover,.rc-hero,.pe-cover,.pe-photo,.tr-hero').forEach(el => {
-      if (el.dataset.wiredImg) return;
-      el.dataset.wiredImg = '1';
-      _addImgOverlay(el);
-    });
+    const article = {
+      id: 'preview',
+      title,
+      body,
+      excerpt: plainBody.substring(0, 200),
+      author: user.name,
+      cat,
+      category: cat,
+      img: imgUrl || null,
+      cover: imgUrl || null,
+      readTime: _readTime(plainBody),
+      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      tags,
+      templateId: IBlog.Templates?.selectedId?.() || null,
+    };
 
-    document.addEventListener('mousedown', _docClick);
+    const templateHtml = IBlog.Templates?.renderForReader?.(article);
+    if (templateHtml) {
+      const templateName = IBlog.Templates?.get?.(article.templateId)?.name || '';
+      pane.innerHTML = `
+        <div class="wtr-preview-bar">
+          <span>${templateName} preview</span>
+          <span class="wtr-live-dot">Live</span>
+        </div>
+        <div class="wtr-preview-scroll">${templateHtml}</div>`;
+      return;
+    }
+
+    const bodyMarkup = _looksLikeHtml(body)
+      ? `<div class="wtr-plain-rich-body">${body}</div>`
+      : String(body || '')
+          .split(/\n{2,}/)
+          .filter((paragraph) => paragraph.trim())
+          .map((paragraph, index) => _renderPlainBlock(paragraph, index))
+          .join('');
+
+    pane.innerHTML = `
+      <div class="wtr-preview-bar">
+        <span>Plain preview</span>
+        <span class="wtr-live-dot">Live</span>
+      </div>
+      <div class="wtr-preview-scroll wtr-plain">
+        ${imgUrl ? `<div class="wtr-plain-cover" style="background-image:url('${imgUrl}')"></div>` : ''}
+        <div class="wtr-plain-cat">${_escapeHtml(cat)}</div>
+        <h1 class="wtr-plain-title">${_escapeHtml(title)}</h1>
+        <div class="wtr-plain-meta">By <strong>${_escapeHtml(user.name)}</strong> · ${article.readTime} · ${article.date}</div>
+        <hr class="wtr-plain-rule"/>
+        ${bodyMarkup}
+        ${tags.length ? `<div class="wtr-plain-tags">${tags.map((tag) => `<span>${_escapeHtml(tag)}</span>`).join('')}</div>` : ''}
+      </div>`;
   }
 
-  function _activate(el) {
-    if (_activeEl && _activeEl !== el) _deactivate(_activeEl);
-    _activeEl = el;
-    el.contentEditable = 'true';
-    el.classList.add('wtr-editing');
-    el.classList.remove('wtr-hoverable');
-    el.focus();
-    _positionToolbar(el);
-    _toolbar.style.display = 'flex';
-    _updateToolbarState();
-    document.addEventListener('selectionchange', _updateToolbarState);
-  }
-
-  function _deactivate(el) {
-    if (!el) return;
-    el.contentEditable = 'false';
-    el.classList.remove('wtr-editing','wtr-hoverable');
-    if (_activeEl === el) _activeEl = null;
-    document.removeEventListener('selectionchange', _updateToolbarState);
-  }
-
-  /* Sync edits back to textarea */
-  function _syncBack() {
-    const pane     = document.getElementById('writer-preview-pane');
-    const textarea = document.getElementById('article-editor');
-    if (!pane || !textarea) return;
-    const parts = [];
-    pane.querySelectorAll('[data-wired]').forEach(el => {
-      const t = el.innerText?.trim();
-      if (t && !['wtr-preview-bar','wtr-live-dot'].some(c=>el.classList.contains(c))) {
-        parts.push(t);
-      }
-    });
-    if (parts.length) textarea.value = parts.join('\n\n');
-  }
-
-  /* ── Floating toolbar ────────────────────────────────── */
   function _buildFloatingToolbar() {
     if (document.getElementById('wtr-toolbar')) {
       _toolbar = document.getElementById('wtr-toolbar');
@@ -272,14 +401,14 @@ IBlog.Writer = (() => {
     _toolbar = document.createElement('div');
     _toolbar.id = 'wtr-toolbar';
     _toolbar.innerHTML = `
-      <button class="wtr-tb-btn" data-cmd="bold"
+      <button class="wtr-tb-btn" data-cmd="bold" title="Bold"
               onmousedown="event.preventDefault();IBlog.Writer._exec('bold')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="13" height="13">
           <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
           <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/>
         </svg>
       </button>
-      <button class="wtr-tb-btn" data-cmd="italic"
+      <button class="wtr-tb-btn" data-cmd="italic" title="Italic"
               onmousedown="event.preventDefault();IBlog.Writer._exec('italic')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="13" height="13">
           <line x1="19" y1="4" x2="10" y2="4"/>
@@ -287,7 +416,7 @@ IBlog.Writer = (() => {
           <line x1="15" y1="4" x2="9" y2="20"/>
         </svg>
       </button>
-      <button class="wtr-tb-btn" data-cmd="underline"
+      <button class="wtr-tb-btn" data-cmd="underline" title="Underline"
               onmousedown="event.preventDefault();IBlog.Writer._exec('underline')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="13" height="13">
           <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"/>
@@ -296,9 +425,13 @@ IBlog.Writer = (() => {
       </button>
       <div class="wtr-tb-sep"></div>
       <input type="color" class="wtr-tb-color" value="#111111" title="Text color"
-             onchange="IBlog.Writer._exec('foreColor',this.value)"/>
+             onchange="IBlog.Writer._exec('foreColor',this.value)">
+      <input type="color" class="wtr-tb-color" value="#fff1a8" title="Highlight"
+             onchange="IBlog.Writer._exec('hiliteColor',this.value)">
+      <button class="wtr-tb-btn wtr-tb-clear" title="Clear formatting"
+              onmousedown="event.preventDefault();IBlog.Writer._exec('removeFormat')">Clear</button>
       <div class="wtr-tb-sep"></div>
-      <button class="wtr-tb-btn wtr-tb-img"
+      <button class="wtr-tb-btn wtr-tb-img" title="Insert image"
               onmousedown="event.preventDefault();IBlog.Writer._uploadInline()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" stroke-linejoin="round" width="13" height="13">
@@ -308,124 +441,185 @@ IBlog.Writer = (() => {
         </svg>
         Image
       </button>
-      <div class="wtr-tb-sep"></div>
-      <button class="wtr-tb-btn wtr-tb-done"
-              onmousedown="event.preventDefault();IBlog.Writer._doneEditing()">
-        Done
-      </button>
     `;
     _toolbar.style.display = 'none';
     document.body.appendChild(_toolbar);
   }
 
-  function _positionToolbar(el) {
-    if (!_toolbar) return;
-    const r  = el.getBoundingClientRect();
-    const sy = window.scrollY;
-    const th = _toolbar.offsetHeight || 42;
-    let top  = r.top + sy - th - 10;
-    let left = r.left;
-    if (top < sy + 8)              top  = r.bottom + sy + 8;
-    if (left + 360 > window.innerWidth) left = window.innerWidth - 368;
-    if (left < 8)                  left = 8;
-    _toolbar.style.top  = top  + 'px';
-    _toolbar.style.left = left + 'px';
-  }
-
-  function _updateToolbarState() {
-    if (!_toolbar) return;
-    ['bold','italic','underline'].forEach(cmd => {
-      _toolbar.querySelector(`[data-cmd="${cmd}"]`)
-        ?.classList.toggle('active', document.queryCommandState(cmd));
-    });
-    if (_activeEl) _positionToolbar(_activeEl);
-  }
-
-  function _doneEditing() {
-    if (_activeEl) _deactivate(_activeEl);
-    if (_toolbar)  _toolbar.style.display = 'none';
-    _syncBack();
-    IBlog.utils.toast('Changes saved', 'success');
-  }
-
-  function _docClick(e) {
-    if (!_activeEl) return;
-    if (_activeEl.contains(e.target) || _toolbar?.contains(e.target)) return;
-    _deactivate(_activeEl);
-    if (_toolbar) _toolbar.style.display = 'none';
-  }
-
-  function _exec(cmd, value=null) {
-    document.execCommand(cmd, false, value);
-    _syncBack();
+  function _exec(cmd, value = null) {
+    const rich = _richEditor();
+    if (!rich) return;
+    rich.focus();
+    _restoreSelection();
+    if (cmd === 'hiliteColor' && !document.queryCommandSupported?.('hiliteColor')) {
+      document.execCommand('backColor', false, value);
+    } else {
+      document.execCommand(cmd, false, value);
+    }
+    _saveSelection();
+    _syncTextareaFromRich();
+    window.IBlog?.Views?.analyzeQuality?.();
+    _scheduleRender();
     _updateToolbarState();
   }
 
-  /* ── Image upload ────────────────────────────────────── */
   function _buildImageInput() {
     if (document.getElementById('wtr-img-input')) {
-      _imgInput = document.getElementById('wtr-img-input'); return;
+      _imgInput = document.getElementById('wtr-img-input');
+      return;
     }
     _imgInput = document.createElement('input');
-    _imgInput.type    = 'file';
-    _imgInput.id      = 'wtr-img-input';
-    _imgInput.accept  = 'image/*';
+    _imgInput.type = 'file';
+    _imgInput.id = 'wtr-img-input';
+    _imgInput.accept = 'image/*';
     _imgInput.style.display = 'none';
     _imgInput.addEventListener('change', _onImage);
     document.body.appendChild(_imgInput);
   }
 
-  function _uploadInline() { _imgTarget = 'inline'; _imgInput?.click(); }
+  function _uploadInline() {
+    _imgTarget = 'inline';
+    _imgInput?.click();
+  }
 
-  function _onImage(e) {
-    const file = e.target.files[0];
+  function _onImage(event) {
+    const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => {
-      const url = ev.target.result;
-      if (_imgTarget === 'inline' && _activeEl) {
-        document.execCommand('insertHTML', false,
-          `<img src="${url}" style="max-width:100%;border-radius:8px;margin:10px 0;display:block" alt=""/>`);
-        _syncBack();
-      } else if (_imgTarget && _imgTarget !== 'inline') {
-        _imgTarget.style.backgroundImage    = `url('${url}')`;
-        _imgTarget.style.backgroundSize     = 'cover';
-        _imgTarget.style.backgroundPosition = 'center';
-        const imgField = document.getElementById('article-img');
-        if (imgField) imgField.value = url;
-      }
+    reader.onload = (loadEvent) => {
+      const url = loadEvent.target?.result;
+      if (!url) return;
+      const rich = _richEditor();
+      if (!rich || _imgTarget !== 'inline') return;
+      rich.focus();
+      _restoreSelection();
+      document.execCommand('insertHTML', false, `<figure><img src="${url}" alt="Inline image"></figure><p><br></p>`);
+      _syncTextareaFromRich();
+      window.IBlog?.Views?.analyzeQuality?.();
+      _scheduleRender();
       _imgTarget = null;
       _imgInput.value = '';
     };
     reader.readAsDataURL(file);
   }
 
-  function _addImgOverlay(el) {
-    el.style.position = 'relative';
-    const ov = document.createElement('div');
-    ov.className = 'wtr-img-overlay';
-    ov.innerHTML = `
-      <div class="wtr-img-overlay-inner">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-             width="20" height="20" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-          <circle cx="8.5" cy="8.5" r="1.5"/>
-          <polyline points="21 15 16 10 5 21"/>
-        </svg>
-        <span>Replace image</span>
-      </div>`;
-    ov.addEventListener('click', e => {
-      e.stopPropagation();
-      _imgTarget = el;
-      _imgInput?.click();
-    });
-    el.appendChild(ov);
+  function insertTextAtCursor(text) {
+    const rich = _richEditor();
+    if (!rich) return false;
+    rich.focus();
+    if (!_restoreSelection()) {
+      const range = document.createRange();
+      range.selectNodeContents(rich);
+      range.collapse(false);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      _savedRange = range.cloneRange();
+    }
+    document.execCommand('insertText', false, text);
+    _syncTextareaFromRich();
+    window.IBlog?.Views?.analyzeQuality?.();
+    _scheduleRender();
+    return true;
+  }
+
+  function loadArticle(article) {
+    if (!article) return false;
+    const hidden = _hiddenEditor();
+    const rich = _richEditor();
+    const title = document.getElementById('article-title');
+    const category = document.getElementById('article-cat');
+    const tags = document.getElementById('article-tags');
+    const image = document.getElementById('article-img');
+    if (!hidden || !rich || !title || !category || !tags || !image) {
+      _queuedArticle = article;
+      requestAnimationFrame(() => init());
+      return false;
+    }
+
+    title.value = article.title || '';
+    hidden.value = article.body || '';
+    tags.value = Array.isArray(article.tags) ? article.tags.join(', ') : String(article.tags || '');
+    image.value = article.cover || article.img || '';
+    hidden.dataset.editId = String(article.id ?? '');
+    hidden.dataset.editStatus = String(article.status || 'published');
+    _syncRichFromTextarea(true);
+
+    const currentCategory = article.category || article.cat || 'General';
+    if (Array.from(category.options || []).some((option) => option.value === currentCategory || option.textContent === currentCategory)) {
+      category.value = currentCategory;
+    }
+
+    if (article.templateId && IBlog.Templates?.setSelected) {
+      IBlog.Templates.setSelected(article.templateId, { silent: true });
+    } else if (IBlog.Templates?.setSelected) {
+      IBlog.Templates.setSelected(null, { silent: true });
+    }
+
+    window.IBlog?.Views?.refreshCoverPreview?.(image.value, image.value ? 'Cover image selected' : '');
+    window.IBlog?.Views?.analyzeQuality?.();
+    setMode('edit');
+    sessionStorage.removeItem('iblog_edit_article');
+    return true;
+  }
+
+  function queueArticleEdit(article) {
+    if (!article) return;
+    _queuedArticle = article;
+    try {
+      sessionStorage.setItem('iblog_edit_article', JSON.stringify(article));
+    } catch (_) {}
+  }
+
+  function _consumeQueuedArticle() {
+    if (_queuedArticle) {
+      const article = _queuedArticle;
+      _queuedArticle = null;
+      return article;
+    }
+    try {
+      const raw = sessionStorage.getItem('iblog_edit_article');
+      if (!raw) return null;
+      sessionStorage.removeItem('iblog_edit_article');
+      return JSON.parse(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function clear() {
+    const hidden = _hiddenEditor();
+    const rich = _richEditor();
+    if (hidden) {
+      hidden.value = '';
+      delete hidden.dataset.editId;
+      delete hidden.dataset.editStatus;
+    }
+    if (rich) {
+      rich.innerHTML = '';
+      rich.dataset.hydrated = '1';
+    }
+    _queuedArticle = null;
+    sessionStorage.removeItem('iblog_edit_article');
+    _hideToolbar();
   }
 
   function _readTime(text) {
-    return Math.max(1, Math.ceil(text.trim().split(/\s+/).length / 200)) + ' min';
+    const wordCount = String(text || '').trim().split(/\s+/).filter(Boolean).length;
+    return `${Math.max(1, Math.ceil(Math.max(1, wordCount) / 200))} min`;
   }
 
-  return { init, setMode, _exec, _uploadInline, _renderNow };
-
+  return {
+    init,
+    setMode,
+    loadArticle,
+    queueArticleEdit,
+    clear,
+    insertTextAtCursor,
+    syncFromTextarea: () => _syncRichFromTextarea(true),
+    _exec,
+    _uploadInline,
+    _renderNow,
+    get _mode() { return _mode; },
+  };
 })();

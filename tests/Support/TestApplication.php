@@ -452,6 +452,15 @@ final class TestApplication
                 cover VARCHAR(255) DEFAULT '',
                 createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
+            "CREATE TABLE user_follow (
+                id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                followerId INT UNSIGNED NOT NULL,
+                followedId INT UNSIGNED NOT NULL,
+                createdAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uniq_user_follow (followerId, followedId),
+                INDEX idx_user_follow_follower (followerId),
+                INDEX idx_user_follow_followed (followedId)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
             "CREATE TABLE article (
                 id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
                 userId INT UNSIGNED NOT NULL,

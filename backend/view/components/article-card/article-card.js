@@ -5,7 +5,7 @@
 
 IBlog.ArticleCard = {
 
-  _avatarColors: ['#b8960c','#e85d3a','#4caf7d','#4a90d9','#9b59b6','#e67e22','#1abc9c','#e91e63'],
+  _avatarColors: ['#64748b','#e85d3a','#4caf7d','#4a90d9','#9b59b6','#475569','#1abc9c','#e91e63'],
   avatarColor(i) { return this._avatarColors[i % this._avatarColors.length]; },
   _esc(value) {
     return String(value ?? '')
@@ -70,6 +70,7 @@ IBlog.ArticleCard = {
     comment:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
     repost:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
     share:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`,
+    eye:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
     edit:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
     trash:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
     mic:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`,
@@ -81,7 +82,7 @@ IBlog.ArticleCard = {
     { key:'love',    label:'Love',       svgKey:'love',    color:'#e25555' },
     { key:'insight', label:'Insightful', svgKey:'insight', color:'#4a90d9' },
     { key:'helpful', label:'Helpful',    svgKey:'helpful', color:'#4caf7d' },
-    { key:'save',    label:'Save',       svgKey:'save',    color:'#b8960c' },
+    { key:'save',    label:'Save',       svgKey:'save',    color:'#64748b' },
   ],
 
   /* ══════════════════════════════════════════════════════
@@ -127,6 +128,9 @@ IBlog.ArticleCard = {
     const commentCount = Array.isArray(article.comments) ? article.comments.length : 0;
     const localizedReadTime = this._esc(display.readTime || article.readTime || this._t('misc.read', { count: 3 }));
     const localizedTags = Array.isArray(display.tags) ? display.tags : Array.isArray(article.tags) ? article.tags : [];
+    const localizedViews = this._t('feed.views', {
+      count: IBlog.I18n?.formatNumber?.(article.views || 0) || String(article.views || 0),
+    });
     const socialSummary = this._t('feed.socialSummary', {
       likes: IBlog.I18n?.formatNumber?.(article.likes || 0) || String(article.likes || 0),
       comments: IBlog.I18n?.formatNumber?.(commentCount) || String(commentCount),
@@ -154,7 +158,7 @@ IBlog.ArticleCard = {
               <span class="dot"></span>
               <span>${localizedReadTime}</span>
               <span class="dot"></span>
-              <span>${this._esc(insightLabel)}</span>
+              <span class="card-views">${this._esc(localizedViews)}</span>
             </div>
           </div>
           <span class="card-cat">${safeCategory}</span>
@@ -196,6 +200,10 @@ IBlog.ArticleCard = {
             ${article._bookmarked?this.SVG.saveFill:this.SVG.save}
             <span id="bookmark-label-${article.id}">${article._bookmarked ? this._t('actions.saved') : this._t('actions.save')}</span>
           </button>
+          <div class="interact-btn interact-stat" id="view-count-${article.id}">
+            ${this.SVG.eye}
+            <span>${this._esc(localizedViews)}</span>
+          </div>
           <button class="interact-btn" onclick="IBlog.ArticleCard.toggleComments(${article.id})">
             ${this.SVG.comment}
             <span id="comment-count-${article.id}">${commentCount}</span>
@@ -418,8 +426,7 @@ IBlog.ArticleCard = {
           <small>Web Speech · ${article?.readTime||'5 min'}</small>
         </div>
         <div class="podcast-voice-row">
-          <button class="voice-chip active" onclick="IBlog.Podcast.setVoice('default',this)">Default</button>
-          <button class="voice-chip" onclick="IBlog.Podcast.setVoice('female',this)">Female</button>
+          <button class="voice-chip active" onclick="IBlog.Podcast.setVoice('female',this)">Female</button>
           <button class="voice-chip" onclick="IBlog.Podcast.setVoice('male',this)">Male</button>
         </div>
       </div>`;
@@ -485,42 +492,53 @@ IBlog.ArticleCard = {
   },
 
   _commentHTML(c) {
-    return `<div class="comment-item"><div class="comment-avatar">${this._esc((c.author||'U')[0].toUpperCase())}</div><div class="comment-bubble"><strong>${this._esc(c.author||'User')}</strong><p>${this._esc(c.text)}</p></div></div>`;
+    return `<div class="comment-item"><div class="comment-bubble"><strong>${this._esc(c.author||'User')}</strong><p>${this._esc(c.text)}</p></div></div>`;
   },
   _readerCommentHTML(c) {
-    return `<div class="reader-comment-item"><div class="reader-comment-avatar">${this._esc((c.author||'U')[0].toUpperCase())}</div><div class="reader-comment-bubble"><strong>${this._esc(c.author||'User')}</strong><p>${this._esc(c.text)}</p></div></div>`;
+    return `<div class="reader-comment-item"><div class="reader-comment-bubble"><strong>${this._esc(c.author||'User')}</strong><p>${this._esc(c.text)}</p></div></div>`;
   },
 
   /* ── Edit / Delete ───────────────────────────────────── */
   editArticle(id) {
-    const a=(IBlog.state.articles||[]).find(x=>x.id===id);
+    const a=(IBlog.state.articles||[]).find(x=>String(x?.id)===String(id));
     if(!a) return;
+
+    if (IBlog.Writer?.queueArticleEdit) {
+      IBlog.Writer.queueArticleEdit(a);
+    }
+
     IBlog.Dashboard.navigateTo('write');
     setTimeout(()=>{
-      const t=document.getElementById('article-title');
-      const e=document.getElementById('article-editor');
-        const c=document.getElementById('article-cat');
-        const g=document.getElementById('article-tags');
-        const i=document.getElementById('article-img');
-        if(t) t.value=a.title;
-        if(e){e.value=a.body||a.excerpt||'';e.dataset.editId=id;e.dataset.editStatus=a.status||'published';}
-        if(c) c.value=a.cat||a.category||'';
-        if(g) g.value=(a.tags||[]).join(', ');
-        if(i) {
-          i.value=a.cover||a.img||'';
-          if (a.cover || a.img) {
-            i.dataset.fileName='Current cover image';
-          } else {
-            delete i.dataset.fileName;
-          }
-        }
-        IBlog.Templates?.setSelected?.(a.templateId || null, { silent: true });
-        const writerImgFile = document.getElementById('writer-img-file');
-        if (writerImgFile) writerImgFile.value='';
-        IBlog.Views?.refreshCoverPreview?.(i?.value || '', i?.value ? 'Current cover image' : '');
+      if (IBlog.Writer?.loadArticle?.(a)) {
         IBlog.Views?.analyzeQuality?.();
         IBlog.Writer?._renderNow?.();
-      },200);
+        return;
+      }
+
+      const t=document.getElementById('article-title');
+      const e=document.getElementById('article-editor');
+      const c=document.getElementById('article-cat');
+      const g=document.getElementById('article-tags');
+      const i=document.getElementById('article-img');
+      if(t) t.value=a.title;
+      if(e){e.value=a.body||a.excerpt||'';e.dataset.editId=String(a.id ?? id);e.dataset.editStatus=a.status||'published';}
+      if(c) c.value=a.cat||a.category||'';
+      if(g) g.value=(a.tags||[]).join(', ');
+      if(i) {
+        i.value=a.cover||a.img||'';
+        if (a.cover || a.img) {
+          i.dataset.fileName='Current cover image';
+        } else {
+          delete i.dataset.fileName;
+        }
+      }
+      IBlog.Templates?.setSelected?.(a.templateId || null, { silent: true });
+      const writerImgFile = document.getElementById('writer-img-file');
+      if (writerImgFile) writerImgFile.value='';
+      IBlog.Views?.refreshCoverPreview?.(i?.value || '', i?.value ? 'Current cover image' : '');
+      IBlog.Views?.analyzeQuality?.();
+      IBlog.Writer?._renderNow?.();
+    },200);
       IBlog.utils.toast('Article loaded for editing');
     },
 

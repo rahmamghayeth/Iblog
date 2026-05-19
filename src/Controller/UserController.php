@@ -71,6 +71,31 @@ function deleteUser(PDO $cnx, int $id): bool
     return userRepository($cnx)->delete($id);
 }
 
+function getUserFollowStats(PDO $cnx, int $userId): array
+{
+    return userRepository($cnx)->getFollowStats($userId);
+}
+
+function getFollowingUserIds(PDO $cnx, int $userId): array
+{
+    return userRepository($cnx)->getFollowingIds($userId);
+}
+
+function isUserFollowing(PDO $cnx, int $followerId, int $followedId): bool
+{
+    return userRepository($cnx)->isFollowing($followerId, $followedId);
+}
+
+function followUser(PDO $cnx, int $followerId, int $followedId): bool
+{
+    return userRepository($cnx)->followUser($followerId, $followedId);
+}
+
+function unfollowUser(PDO $cnx, int $followerId, int $followedId): bool
+{
+    return userRepository($cnx)->unfollowUser($followerId, $followedId);
+}
+
 function upgradeToPremium(PDO $cnx, int $userId, string $method = 'card', float $amount = 9.0): bool
 {
     return authService($cnx)->upgradeToPremium($userId, $method, $amount);

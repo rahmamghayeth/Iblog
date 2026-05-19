@@ -127,6 +127,13 @@ IBlog.Chat = (() => {
     return community?.id && Number.isFinite(Number(community.id)) ? Number(community.id) : 0;
   }
 
+  function _realOnlineCount(community) {
+    const memberCount = Number(community?.memberCount ?? community?.members ?? 0);
+    const currentUser = window.IBlog?.state?.currentUser || null;
+    if (!currentUser || memberCount <= 0) return 0;
+    return 1;
+  }
+
   function _authPayload() {
     const user = window.IBlog?.state?.currentUser || {};
     return {
@@ -512,9 +519,10 @@ IBlog.Chat = (() => {
     if (rjb) { rjb.classList.add('joined'); rjb.textContent = 'Joined'; }
 
     const memberCount = Number(c.memberCount ?? c.members ?? 0);
+    const onlineCount = _realOnlineCount(c);
     document.getElementById('chat-icon').textContent = c.icon;
     document.getElementById('chat-title').textContent = c.name;
-    document.getElementById('chat-meta').textContent = `${memberCount} members | ${Math.floor(Math.random() * 40 + 8)} online`;
+    document.getElementById('chat-meta').textContent = `${memberCount} ${memberCount === 1 ? 'member' : 'members'} | ${onlineCount} online`;
 
     _closeThreadPane();
     _loadMessages(c);

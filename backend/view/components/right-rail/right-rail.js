@@ -3,8 +3,10 @@
    ═══════════════════════════════════════════════════════════ */
 
 const STATS_API     = 'backend/view/components/auth/api-stats.php';
+const AUTH_API      = 'backend/view/components/auth/api-auth.php';
 const COMMUNITY_API = 'backend/controller/CommunityController.php';
 let _statsIntervalId = null;
+let _topAuthors = [];
 
 function _t(key, vars = {}) {
   return window.IBlog?.I18n?.t?.(key, vars) || key;
@@ -28,6 +30,17 @@ function _esc(value) {
 function _fmt(n) {
   const num = Number(n || 0);
   return num >= 1000 ? `${(num / 1000).toFixed(1)}k` : String(num);
+}
+
+function _assetUrl(path) {
+  const value = String(path || '').trim();
+  if (!value) return '';
+  if (/^(?:data:|blob:|https?:\/\/)/i.test(value)) return value;
+  try {
+    return new URL(value, window.location.href).href;
+  } catch (_) {
+    return value;
+  }
 }
 
 function _normalizeIdentity(value) {
@@ -69,8 +82,8 @@ function _resolveAuthorProfile(author = {}) {
   }
 
   return {
-    avatar,
-    cover,
+    avatar: _assetUrl(avatar),
+    cover: _assetUrl(cover),
     bio,
     plan,
     isPremium,
@@ -126,6 +139,38 @@ async function _statsPost(action) {
   } catch (_) {
     return null;
   }
+}
+
+async function _authPost(body) {
+  const response = await fetch(AUTH_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify(body),
+  });
+  const text = await response.text();
+  if (!text.trim().startsWith('{')) {
+    throw new Error('Server error.');
+  }
+  const data = JSON.parse(text);
+  if (!response.ok || !data?.ok) {
+    throw new Error(data?.error || 'Request failed.');
+  }
+  return data;
+}
+
+function _applyViewerFollowState(viewer) {
+  if (!viewer) return;
+  const current = {
+    ...(window.IBlog?.state?.currentUser || {}),
+    ...viewer,
+  };
+  if (current.name && !current.initial) {
+    current.initial = current.name[0].toUpperCase();
+  }
+  window.IBlog.state.currentUser = current;
+  sessionStorage.setItem('user', JSON.stringify(current));
+  localStorage.setItem('user', JSON.stringify(current));
 }
 
 /* ── HTML injection ──────────────────────────────────────── */
@@ -282,6 +327,8 @@ async function loadTopAuthors() {
     return;
   }
 
+  _topAuthors = authors;
+
   const colors = [
     'hsl(40,75%,48%)',
     'hsl(200,60%,46%)',
@@ -343,14 +390,67 @@ async function loadTopAuthors() {
               onclick="event.stopPropagation(); IBlog.MessageCenter?.startConversation?.(JSON.parse(decodeURIComponent('${_payload(profilePayload)}')))">
               ${_t('rightRail.message')}
             </button>
-            <button class="follow-btn"
-              onclick="event.stopPropagation(); this.classList.toggle('following'); this.textContent = this.classList.contains('following') ? '${_t('rightRail.following')}' : '${_t('rightRail.follow')}';">
-              ${_t('rightRail.follow')}
+            <button class="follow-btn${author.isFollowing ? ' following' : ''}"
+              onclick="event.stopPropagation(); toggleAuthorFollow(${index}, this);">
+              ${author.isFollowing ? _t('rightRail.following') : _t('rightRail.follow')}
             </button>
           </div>
         `}
       </div>`;
   }).join('');
+}
+
+async function toggleAuthorFollow(index, button) {
+  const author = _topAuthors[index];
+  const currentUser = window.IBlog?.state?.currentUser || null;
+  if (!author?.id || !currentUser?.id) {
+    IBlog.utils?.toast('You need to sign in first.', 'info');
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = author.isFollowing ? '...' : _t('rightRail.following');
+
+  try {
+    const data = await _authPost({
+      action: author.isFollowing ? 'unfollow_user' : 'follow_user',
+      targetUserId: Number(author.id),
+    });
+
+    _applyViewerFollowState(data.viewer || null);
+    if (data?.target) {
+      _topAuthors[index] = {
+        ...author,
+        ...data.target,
+      };
+    }
+
+    if (
+      window.IBlog?.state?.profileView?.mode === 'user' &&
+      String(window.IBlog.state.profileView.user?.id ?? '') === String(author.id)
+    ) {
+      window.IBlog.state.profileView.user = {
+        ...window.IBlog.state.profileView.user,
+        ...(data.target || {}),
+      };
+      IBlog.Profile?.renderCurrentView?.();
+    }
+
+    loadTopAuthors();
+    loadUserStats();
+    const activeFeed = document.querySelector('.feed-tab.active')?.getAttribute('onclick') || '';
+    if (activeFeed.includes("'following'")) {
+      IBlog.Feed?.build?.('following');
+    }
+    IBlog.utils?.toast(
+      data?.target?.isFollowing ? 'You are now following this author.' : 'You unfollowed this author.',
+      'success'
+    );
+  } catch (error) {
+    IBlog.utils?.toast(error?.message || 'Could not update follow status.', 'error');
+  } finally {
+    button.disabled = false;
+  }
 }
 
 /* ── Trending topics ─────────────────────────────────────── */

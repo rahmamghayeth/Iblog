@@ -53,6 +53,12 @@ function requestedPageSize(array $body, int $default = 12): int
     return max(1, min($raw > 0 ? $raw : $default, 50));
 }
 
+function articlePlainText(string $body): string
+{
+    $text = trim(html_entity_decode(strip_tags($body), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    return preg_replace('/\s+/u', ' ', $text) ?: '';
+}
+
 function paginateItems(array $items, int $page, int $pageSize): array
 {
     $totalItems = count($items);
@@ -371,9 +377,15 @@ function serializeArticleForApp(object $article, array $commentsMap = [], array 
 {
     $author = (string) ($article->author_name ?? 'Anonymous');
     $body = (string) ($article->body ?? '');
+    $plainBody = articlePlainText($body);
     $excerpt = trim(mb_substr($body, 0, 160));
     if (mb_strlen($body) > 160) {
         $excerpt .= '…';
+    }
+
+    $excerpt = trim(mb_substr($plainBody, 0, 160));
+    if (mb_strlen($plainBody) > 160) {
+        $excerpt .= '...';
     }
 
     $cover = normalizeCoverPath((string) ($article->coverImage ?? ''));
@@ -409,7 +421,7 @@ function serializeArticleForApp(object $article, array $commentsMap = [], array 
         '_bookmarked' => $bookmarked,
         'liked' => $liked,
         '_liked' => $liked,
-        'quality' => mb_strlen($body) > 300 ? 'high' : 'med',
+        'quality' => mb_strlen($plainBody) > 300 ? 'high' : 'med',
         'isPremiumAuthor' => false,
         'tags' => $tags,
         'date' => articleDateLabel($article->createdAt ?? null),
@@ -423,9 +435,14 @@ function serializeSavedRowForApp(array $row, array $commentsMap = [], array $lik
 {
     $articleId = (int) ($row['articleId'] ?? 0);
     $body = (string) ($row['body'] ?? '');
+    $plainBody = articlePlainText($body);
     $excerpt = trim(mb_substr($body, 0, 160));
     if (mb_strlen($body) > 160) {
         $excerpt .= '…';
+    }
+    $excerpt = trim(mb_substr($plainBody, 0, 160));
+    if (mb_strlen($plainBody) > 160) {
+        $excerpt .= '...';
     }
     $cover = normalizeCoverPath((string) ($row['coverImage'] ?? ''));
     $author = (string) ($row['author_name'] ?? 'Anonymous');
@@ -457,7 +474,7 @@ function serializeSavedRowForApp(array $row, array $commentsMap = [], array $lik
         '_bookmarked' => true,
         'liked' => $liked,
         '_liked' => $liked,
-        'quality' => mb_strlen($body) > 300 ? 'high' : 'med',
+        'quality' => mb_strlen($plainBody) > 300 ? 'high' : 'med',
         'isPremiumAuthor' => false,
         'tags' => normalizeArticleTags((string) ($row['tags'] ?? '')),
         'date' => articleDateLabel($row['articleCreatedAt'] ?? null),
@@ -673,6 +690,33 @@ if ($action === 'like_toggle') {
     ]);
 }
 
+if ($action === 'view_increment') {
+    $articleId = (int) ($body['articleId'] ?? 0);
+    if ($articleId <= 0) {
+        articleJsonErr('Invalid article id.');
+    }
+
+    $article = getArticleById($cnx, $articleId);
+    if (!$article) {
+        articleJsonErr('Article not found.', 404);
+    }
+
+    try {
+        $stmt = $cnx->prepare('UPDATE article SET views = COALESCE(views, 0) + 1 WHERE id = :articleId');
+        $stmt->execute([':articleId' => $articleId]);
+    } catch (Throwable) {
+        articleJsonErr('Could not update article views.', 500);
+    }
+
+    $viewStmt = $cnx->prepare('SELECT COALESCE(views, 0) FROM article WHERE id = :articleId LIMIT 1');
+    $viewStmt->execute([':articleId' => $articleId]);
+
+    articleJsonOk([
+        'articleId' => $articleId,
+        'views' => (int) $viewStmt->fetchColumn(),
+    ]);
+}
+
 if ($action === 'comment_add') {
     $userId = ensureArticleAuth($body);
     $articleId = (int) ($body['articleId'] ?? 0);
@@ -730,7 +774,7 @@ if ($action === 'save') {
 
     $readingTime = trim((string) ($body['readingTime'] ?? ''));
     if ($readingTime === '') {
-        $readingTime = max(1, (int) ceil(str_word_count($articleBody) / 200)) . ' min';
+        $readingTime = max(1, (int) ceil(str_word_count(articlePlainText($articleBody)) / 200)) . ' min';
     }
 
     $created = addArticle($cnx, [
@@ -791,7 +835,7 @@ if ($action === 'update') {
     $coverImage = $coverInput !== '' ? saveCoverImage($coverInput) : (string) ($article->coverImage ?? '');
     $readingTime = trim((string) ($body['readingTime'] ?? ''));
     if ($readingTime === '') {
-        $readingTime = max(1, (int) ceil(str_word_count($articleBody) / 200)) . ' min';
+        $readingTime = max(1, (int) ceil(str_word_count(articlePlainText($articleBody)) / 200)) . ' min';
     }
 
     $updated = updateArticle($cnx, $id, [

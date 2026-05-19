@@ -54,6 +54,7 @@ window.IBlogOnboarding = (() => {
   const TEMPLATE = `
     <div id="onboarding-overlay" class="ob-overlay" style="display:none">
       <div class="ob-shell">
+        <button class="ob-close" type="button" aria-label="Close onboarding" onclick="IBlogOnboarding.cancel()">×</button>
         <div class="ob-progress"><div class="ob-progress-fill" id="ob-progress-fill"></div></div>
         <div class="ob-step-label" id="ob-step-label">Step 1 of 3</div>
         <div class="ob-step active" id="ob-step-1">
@@ -159,6 +160,7 @@ window.IBlogOnboarding = (() => {
   let selectedAvatar = "";
   let pseudoValid = false;
   let onComplete = null;
+  let onCancel = null;
   let finishLabel = "Enter Dashboard";
   let flowMode = "full";
 
@@ -170,9 +172,11 @@ window.IBlogOnboarding = (() => {
     currentStep = flowMode === "interests" ? 2 : 1;
     pseudoValid = false;
     onComplete = typeof options.onComplete === "function" ? options.onComplete : null;
+    onCancel = typeof options.onCancel === "function" ? options.onCancel : null;
     finishLabel = options.finishLabel || "Enter Dashboard";
 
     injectHTML();
+    resetViewState();
     renderChips();
     prefillIdentity();
     updateSelectionUI();
@@ -186,6 +190,8 @@ window.IBlogOnboarding = (() => {
       host.innerHTML = TEMPLATE.trim();
       document.body.appendChild(host.firstElementChild);
     }
+    const closeButton = document.querySelector("#onboarding-overlay .ob-close");
+    if (closeButton) closeButton.innerHTML = "&times;";
     document.getElementById("ob-finish-btn").textContent = finishLabel;
     updateFlowUI();
   }
@@ -196,6 +202,25 @@ window.IBlogOnboarding = (() => {
 
   function hideOverlay() {
     document.getElementById("onboarding-overlay").style.display = "none";
+  }
+
+  function resetViewState() {
+    const nameInput = document.getElementById("ob-name");
+    const pseudoInput = document.getElementById("ob-pseudo");
+    const bioInput = document.getElementById("ob-bio");
+    const bioCount = document.getElementById("ob-bio-count");
+    const avatarInput = document.getElementById("ob-avatar-file");
+    const pseudoHint = document.getElementById("ob-pseudo-hint");
+
+    if (nameInput) nameInput.value = "";
+    if (pseudoInput) pseudoInput.value = "";
+    if (bioInput) bioInput.value = "";
+    if (bioCount) bioCount.textContent = "0";
+    if (avatarInput) avatarInput.value = "";
+    if (pseudoHint) {
+      pseudoHint.textContent = "Use 3 to 24 lowercase letters, numbers, or underscores.";
+      pseudoHint.className = "ob-field-hint";
+    }
   }
 
   function goStep(targetStep) {
@@ -254,6 +279,32 @@ window.IBlogOnboarding = (() => {
 
     validatePseudo(document.getElementById("ob-pseudo"));
     updateAvatar(document.getElementById("ob-avatar-preview"), selectedAvatar, name || "A");
+  }
+
+  async function cancel() {
+    const fallbackUser = currentUser ? {
+      ...currentUser,
+      initial: (currentUser.name?.[0] || "A").toUpperCase()
+    } : null;
+
+    hideOverlay();
+
+    if (flowMode === "full") {
+      try {
+        await fetch(AUTH_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ action: "cancel_onboarding" })
+        });
+      } catch (error) {
+        console.warn("Onboarding cancel sync failed:", error);
+      }
+    }
+
+    if (onCancel) {
+      onCancel(fallbackUser);
+    }
   }
 
   function suggestPseudo(name) {
@@ -538,6 +589,7 @@ window.IBlogOnboarding = (() => {
   return {
     start,
     editInterests: (user, options = {}) => start(user, { ...options, mode: "interests", finishLabel: options.finishLabel || "Save interests" }),
+    cancel,
     goStep,
     toggleChip,
     validatePseudo,

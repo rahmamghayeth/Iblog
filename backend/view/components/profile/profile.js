@@ -5,17 +5,29 @@
 IBlog.Profile = (() => {
   const AUTH_API = 'backend/view/components/auth/api-auth.php';
 
-  function syncFromSession() {
+  function _postAuth(body) {
     return fetch(AUTH_API, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
-      body: JSON.stringify({ action: 'me' }),
+      body: JSON.stringify(body),
     })
       .then((r) => r.text())
       .then((text) => {
-        if (!text.trim().startsWith('{')) return null;
+        if (!text.trim().startsWith('{')) {
+          throw new Error('Server error.');
+        }
         const data = JSON.parse(text);
+        if (!data?.ok) {
+          throw new Error(data?.error || 'Request failed.');
+        }
+        return data;
+      });
+  }
+
+  function syncFromSession() {
+    return _postAuth({ action: 'me' })
+      .then((data) => {
         if (data.ok && data.user) {
           const existing = IBlog.state.currentUser || {};
           const nextUser = {
@@ -141,6 +153,30 @@ IBlog.Profile = (() => {
     return String(n);
   }
 
+  function _realCountLabel(value) {
+    if (value === null || value === undefined || value === '') return '0';
+    if (typeof value === 'number' && Number.isFinite(value)) return _formatCompact(value);
+    const raw = String(value).trim();
+    if (!raw) return '0';
+    if (/[a-z]/i.test(raw)) return raw;
+    const numeric = Number.parseFloat(raw.replace(/[^0-9.]/g, ''));
+    if (Number.isFinite(numeric)) return _formatCompact(numeric);
+    return raw;
+  }
+
+  function _countValue(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    const raw = String(value ?? '').trim().toLowerCase();
+    if (!raw) return 0;
+    const compactMatch = raw.match(/^(\d+(?:\.\d+)?)\s*([km])$/);
+    if (compactMatch) {
+      const multiplier = compactMatch[2] === 'm' ? 1000000 : 1000;
+      return Math.round(Number.parseFloat(compactMatch[1]) * multiplier);
+    }
+    const numeric = Number.parseFloat(raw.replace(/[^0-9.]/g, ''));
+    return Number.isFinite(numeric) ? numeric : 0;
+  }
+
   function _esc(value) {
     return String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -257,10 +293,110 @@ IBlog.Profile = (() => {
       bio: target.bio || (articles.length ? `Author on IBlog. Published ${articles.length} article${articles.length === 1 ? '' : 's'}.` : 'Author on IBlog.'),
       fields: target.fields || derivedTags,
       subjects: target.subjects || [],
-      followers: target.followers || _formatCompact(Math.max(140, articles.length * 87)),
-      following: target.following || _formatCompact(Math.max(24, articles.length * 9)),
+      followers: _countValue(target.followers),
+      following: _countValue(target.following),
+      isFollowing: !!target.isFollowing,
       initial,
     };
+  }
+
+  function _mergeViewedUser(nextUser = {}) {
+    const view = _currentView();
+    if (view?.mode !== 'user') return;
+    const currentUser = view.user || {};
+    const merged = _resolveProfileUser({ ...currentUser, ...nextUser });
+    IBlog.state.profileView = {
+      ...view,
+      user: merged,
+    };
+  }
+
+  function _applyFollowResponse(data) {
+    if (data?.viewer) {
+      const nextViewer = {
+        ...(_cu() || {}),
+        ...data.viewer,
+      };
+      if (nextViewer.name && !nextViewer.initial) {
+        nextViewer.initial = nextViewer.name[0].toUpperCase();
+      }
+      IBlog.state.currentUser = nextViewer;
+      sessionStorage.setItem('user', JSON.stringify(nextViewer));
+      localStorage.setItem('user', JSON.stringify(nextViewer));
+    }
+
+    if (data?.target) {
+      _mergeViewedUser(data.target);
+    }
+
+    if (window.RightRail?.refreshAuthors) {
+      window.RightRail.refreshAuthors();
+    }
+    if (window.RightRail?.refreshStats) {
+      window.RightRail.refreshStats();
+    }
+    if (_currentView()?.mode === 'user') {
+      renderCurrentView();
+    }
+  }
+
+  function _followLabel(user) {
+    return user?.isFollowing ? 'Following' : 'Follow';
+  }
+
+  function _fetchPublicUser(target = {}) {
+    const targetUserId = Number(target.id ?? target.userId ?? 0);
+    const targetEmail = String(target.email || target.authorEmail || '').trim();
+    if (!targetUserId && !targetEmail) {
+      return Promise.resolve(null);
+    }
+
+    return _postAuth({
+      action: 'get_public_user',
+      targetUserId,
+      targetEmail,
+    })
+      .then((data) => data.user || null)
+      .catch(() => null);
+  }
+
+  function toggleFollow() {
+    const view = _currentView();
+    const target = view?.user;
+    const current = _cu();
+    if (!target?.id || !current?.id) {
+      IBlog.utils?.toast('You need to sign in first.', 'info');
+      return;
+    }
+    if (String(target.id) === String(current.id)) {
+      IBlog.utils?.toast('You cannot follow your own account.', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('profile-follow-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = target.isFollowing ? 'Updating...' : 'Following...';
+    }
+
+    _postAuth({
+      action: target.isFollowing ? 'unfollow_user' : 'follow_user',
+      targetUserId: Number(target.id),
+    })
+      .then((data) => {
+        _applyFollowResponse(data);
+        IBlog.utils?.toast(
+          data?.target?.isFollowing ? 'You are now following this author.' : 'You unfollowed this author.',
+          'success'
+        );
+      })
+      .catch((error) => {
+        IBlog.utils?.toast(error?.message || 'Could not update follow status.', 'error');
+      })
+      .finally(() => {
+        if (btn) btn.disabled = false;
+        renderCurrentView();
+      });
   }
 
   function _currentView() {
@@ -289,8 +425,8 @@ IBlog.Profile = (() => {
     _setText('profile-pseudo', `@${user.pseudo || (user.name ? user.name.split(' ')[0].toLowerCase() : 'user')}`);
     _setText('profile-bio-text', user.bio || (isOwn ? 'No bio yet. Click Edit Profile to add one.' : 'No bio yet.'));
     _setText('profile-article-count', articleTotal);
-    _setText('profile-follower-count', user.followers || _formatCompact(Math.max(90, articles.length * 87)));
-    _setText('profile-following-count', user.following || _formatCompact(isOwn ? 389 : 126));
+    _setText('profile-follower-count', _realCountLabel(user.followers));
+    _setText('profile-following-count', _realCountLabel(user.following));
 
     const badge = document.getElementById('profile-premium-badge');
     if (badge) badge.style.display = user.plan === 'premium' || user.isPremium ? 'inline-flex' : 'none';
@@ -331,11 +467,23 @@ IBlog.Profile = (() => {
       showOwnProfile(true);
       return;
     }
+
+    const localTarget = _resolveProfileUser(target);
     IBlog.state.profileView = {
       mode: 'user',
-      user: _resolveProfileUser(target),
+      user: localTarget,
     };
     IBlog.Dashboard?.navigateTo?.('profile');
+
+    _fetchPublicUser(target).then((fetchedUser) => {
+      if (!fetchedUser) return;
+      const activeView = _currentView();
+      if (activeView?.mode !== 'user') return;
+      const activeId = activeView.user?.id ?? activeView.id ?? null;
+      if (activeId !== null && String(activeId) !== String(fetchedUser.id ?? '')) return;
+      _mergeViewedUser(fetchedUser);
+      renderCurrentView();
+    });
   }
 
   function openUserProfileFromElement(element) {
@@ -403,8 +551,8 @@ IBlog.Profile = (() => {
     container.innerHTML = `
       <button class="btn btn-primary" style="padding:9px 18px;font-size:13px;"
         onclick='IBlog.MessageCenter?.startConversation?.(JSON.parse(decodeURIComponent("${messagePayload}")))'>Message</button>
-      <button class="btn btn-primary" style="padding:9px 18px;font-size:13px;"
-        onclick="IBlog.utils?.toast('Follow feature coming soon.', 'success')">Follow</button>
+      <button class="btn btn-primary" id="profile-follow-btn" style="padding:9px 18px;font-size:13px;"
+        onclick="IBlog.Profile.toggleFollow()">${_followLabel(user)}</button>
       <button class="btn btn-outline" style="padding:9px 18px;font-size:13px;"
         onclick="IBlog.Profile.showOwnProfile(true)">Back to My Profile</button>`;
   }
@@ -708,6 +856,7 @@ IBlog.Profile = (() => {
     openUserProfile,
     openUserProfileFromElement,
     decodeProfilePayload: _decodePayload,
+    toggleFollow,
     toggleEdit,
     saveProfile,
     logout,

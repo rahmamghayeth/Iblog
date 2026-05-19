@@ -225,6 +225,7 @@ function highlightTitle(title) {
   const safe = escapeHero(title);
   const words = safe.split(' ');
   if (words.length < 4) return safe;
-  const pivot = Math.max(1, Math.floor(words.length / 2));
+  const emphasisSize = words.length >= 9 ? 4 : words.length >= 6 ? 3 : 2;
+  const pivot = Math.max(1, words.length - emphasisSize);
   return `${words.slice(0, pivot).join(' ')} <em>${words.slice(pivot).join(' ')}</em>`;
 }

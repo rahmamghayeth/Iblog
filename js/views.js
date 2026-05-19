@@ -1,5 +1,25 @@
 IBlog.Views = (() => {
   let _mapInstance = null;
+  const _coverFrameDefaults = Object.freeze({ scale: 1, offsetX: 50, offsetY: 50 });
+  const _coverOutputSize = Object.freeze({ width: 1600, height: 900 });
+  let _coverEditorBound = false;
+  let _coverPreviewBound = false;
+  let _coverImageState = _createCoverImageState();
+  let _coverLoadToken = 0;
+  let _coverDragState = null;
+
+  function _createCoverImageState() {
+    return {
+      sourceUrl: '',
+      outputUrl: '',
+      fileName: '',
+      mimeType: 'image/jpeg',
+      image: null,
+      scale: _coverFrameDefaults.scale,
+      offsetX: _coverFrameDefaults.offsetX,
+      offsetY: _coverFrameDefaults.offsetY,
+    };
+  }
 
   /* ── Map ─────────────────────────────────────────────── */
   function initMap() {
@@ -238,6 +258,10 @@ IBlog.Views = (() => {
   }
 
   function injectSection(prefix) {
+    if (IBlog.Writer?.insertTextAtCursor?.(prefix)) {
+      analyzeQuality();
+      return;
+    }
     const ed = document.getElementById('article-editor');
     if (!ed) return;
     const val = ed.value;
@@ -255,7 +279,174 @@ IBlog.Views = (() => {
     injectSection(`[${text || url}](${url})`);
   }
 
-  function _syncCoverPreview(url = '', fileName = '') {
+  function _coverEditorElements() {
+    return {
+      editor: document.getElementById('writer-cover-editor'),
+      scale: document.getElementById('writer-cover-scale'),
+      scaleValue: document.getElementById('writer-cover-scale-value'),
+      offsetX: document.getElementById('writer-cover-offset-x'),
+      offsetXValue: document.getElementById('writer-cover-offset-x-value'),
+      offsetY: document.getElementById('writer-cover-offset-y'),
+      offsetYValue: document.getElementById('writer-cover-offset-y-value'),
+    };
+  }
+
+  function _coverPreviewElements() {
+    return {
+      preview: document.getElementById('writer-cover-preview'),
+      toolbar: document.getElementById('writer-cover-preview-toolbar'),
+      input: document.getElementById('writer-img-file'),
+    };
+  }
+
+  function _toggleCoverPreviewToolbar(show) {
+    const { toolbar } = _coverPreviewElements();
+    if (!toolbar) return;
+    toolbar.hidden = !show;
+  }
+
+  function _coverFrameMetrics(width = _coverOutputSize.width, height = _coverOutputSize.height) {
+    const image = _coverImageState.image;
+    if (!image) return null;
+
+    const baseScale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+    const drawWidth = image.naturalWidth * baseScale * _coverImageState.scale;
+    const drawHeight = image.naturalHeight * baseScale * _coverImageState.scale;
+
+    return {
+      drawWidth,
+      drawHeight,
+      extraX: Math.max(0, drawWidth - width),
+      extraY: Math.max(0, drawHeight - height),
+    };
+  }
+
+  function _clampCoverFrame() {
+    const metrics = _coverFrameMetrics();
+    if (!metrics) return;
+
+    _coverImageState.offsetX = metrics.extraX > 0 ? Math.min(100, Math.max(0, _coverImageState.offsetX)) : 50;
+    _coverImageState.offsetY = metrics.extraY > 0 ? Math.min(100, Math.max(0, _coverImageState.offsetY)) : 50;
+  }
+
+  function _ensureCoverPreviewBindings() {
+    if (_coverPreviewBound) return;
+
+    const { preview, input } = _coverPreviewElements();
+    if (!preview) return;
+
+    preview.addEventListener('click', () => {
+      if (preview.classList.contains('is-empty')) {
+        input?.click();
+      }
+    });
+
+    preview.addEventListener('pointerdown', (event) => {
+      if (!_coverImageState.image || preview.classList.contains('is-empty')) return;
+      const metrics = _coverFrameMetrics(preview.clientWidth || _coverOutputSize.width, preview.clientHeight || _coverOutputSize.height);
+      if (!metrics) return;
+
+      _coverDragState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startOffsetX: _coverImageState.offsetX,
+        startOffsetY: _coverImageState.offsetY,
+        metrics,
+      };
+
+      preview.classList.add('is-dragging');
+      preview.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    });
+
+    preview.addEventListener('pointermove', (event) => {
+      if (!_coverDragState || _coverDragState.pointerId !== event.pointerId) return;
+
+      const dx = event.clientX - _coverDragState.startX;
+      const dy = event.clientY - _coverDragState.startY;
+      const { extraX, extraY } = _coverDragState.metrics;
+
+      _coverImageState.offsetX = extraX > 0
+        ? _coverDragState.startOffsetX - ((dx / extraX) * 100)
+        : 50;
+      _coverImageState.offsetY = extraY > 0
+        ? _coverDragState.startOffsetY - ((dy / extraY) * 100)
+        : 50;
+
+      _clampCoverFrame();
+      _applyCoverAdjustments();
+    });
+
+    const finishDrag = (event) => {
+      if (_coverDragState && event?.pointerId !== undefined && _coverDragState.pointerId !== event.pointerId) return;
+      _coverDragState = null;
+      preview.classList.remove('is-dragging');
+    };
+
+    preview.addEventListener('pointerup', finishDrag);
+    preview.addEventListener('pointercancel', finishDrag);
+
+    preview.addEventListener('wheel', (event) => {
+      if (!_coverImageState.image || preview.classList.contains('is-empty')) return;
+      event.preventDefault();
+
+      const direction = event.deltaY < 0 ? 1 : -1;
+      _coverImageState.scale = Math.min(2.8, Math.max(1, _coverImageState.scale + (direction * 0.08)));
+      _clampCoverFrame();
+      _applyCoverAdjustments();
+    }, { passive: false });
+
+    _coverPreviewBound = true;
+  }
+
+  function _normalizeCoverMimeType(url = '') {
+    if (/^data:image\/png/i.test(url)) return 'image/png';
+    if (/^data:image\/webp/i.test(url)) return 'image/webp';
+    return 'image/jpeg';
+  }
+
+  function _ensureCoverEditorBindings() {
+    if (_coverEditorBound) return;
+
+    const { scale, offsetX, offsetY } = _coverEditorElements();
+    [scale, offsetX, offsetY].forEach((control) => {
+      control?.addEventListener('input', () => {
+        _updateCoverFrameFromControls();
+        _applyCoverAdjustments();
+      });
+    });
+
+    _coverEditorBound = true;
+  }
+
+  function _toggleCoverEditor(show) {
+    const { editor } = _coverEditorElements();
+    if (!editor) return;
+    editor.hidden = !show;
+  }
+
+  function _syncCoverEditorControls() {
+    const { scale, scaleValue, offsetX, offsetXValue, offsetY, offsetYValue } = _coverEditorElements();
+
+    if (scale) scale.value = String(_coverImageState.scale);
+    if (offsetX) offsetX.value = String(_coverImageState.offsetX);
+    if (offsetY) offsetY.value = String(_coverImageState.offsetY);
+
+    if (scaleValue) scaleValue.textContent = `${Math.round(_coverImageState.scale * 100)}%`;
+    if (offsetXValue) offsetXValue.textContent = `${Math.round(_coverImageState.offsetX)}%`;
+    if (offsetYValue) offsetYValue.textContent = `${Math.round(_coverImageState.offsetY)}%`;
+  }
+
+  function _updateCoverFrameFromControls() {
+    const { scale, offsetX, offsetY } = _coverEditorElements();
+    _coverImageState.scale = Number.parseFloat(scale?.value || String(_coverFrameDefaults.scale)) || _coverFrameDefaults.scale;
+    _coverImageState.offsetX = Number.parseFloat(offsetX?.value || String(_coverFrameDefaults.offsetX)) || _coverFrameDefaults.offsetX;
+    _coverImageState.offsetY = Number.parseFloat(offsetY?.value || String(_coverFrameDefaults.offsetY)) || _coverFrameDefaults.offsetY;
+    _syncCoverEditorControls();
+  }
+
+  function _renderCoverPreview(url = '', fileName = '') {
     const preview = document.getElementById('writer-cover-preview');
     const nameEl = document.getElementById('writer-cover-name');
     const removeBtn = document.getElementById('writer-cover-remove');
@@ -273,10 +464,17 @@ IBlog.Views = (() => {
       preview.classList.remove('is-empty');
       preview.classList.add('has-image');
       preview.style.backgroundImage = `url("${url}")`;
+      preview.style.backgroundPosition = 'center';
+      preview.style.backgroundSize = 'cover';
+      _toggleCoverPreviewToolbar(true);
     } else {
       preview.classList.add('is-empty');
       preview.classList.remove('has-image');
+      preview.classList.remove('is-dragging');
       preview.style.backgroundImage = '';
+      preview.style.backgroundPosition = '';
+      preview.style.backgroundSize = '';
+      _toggleCoverPreviewToolbar(false);
     }
 
     if (removeBtn) {
@@ -284,7 +482,89 @@ IBlog.Views = (() => {
     }
   }
 
+  function _applyCoverAdjustments() {
+    const { image, sourceUrl, fileName, mimeType } = _coverImageState;
+    if (!image || !sourceUrl) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = _coverOutputSize.width;
+    canvas.height = _coverOutputSize.height;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    _clampCoverFrame();
+    const metrics = _coverFrameMetrics(canvas.width, canvas.height);
+    if (!metrics) return;
+    const { drawWidth, drawHeight, extraX, extraY } = metrics;
+    const drawX = -(extraX * (_coverImageState.offsetX / 100));
+    const drawY = -(extraY * (_coverImageState.offsetY / 100));
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
+
+    let outputUrl = sourceUrl;
+    try {
+      outputUrl = mimeType === 'image/jpeg'
+        ? canvas.toDataURL(mimeType, 0.92)
+        : canvas.toDataURL(mimeType);
+    } catch (error) {
+      console.warn('Cover export failed, falling back to original image.', error);
+    }
+
+    _coverImageState.outputUrl = outputUrl;
+    _renderCoverPreview(outputUrl, fileName || 'Cover image selected');
+    IBlog.Writer?._renderNow?.();
+  }
+
+  function _loadCoverForEditing(url = '', fileName = '') {
+    if (!url) {
+      _coverLoadToken += 1;
+      _coverImageState = _createCoverImageState();
+      _syncCoverEditorControls();
+      _toggleCoverEditor(false);
+      _renderCoverPreview('', '');
+      return;
+    }
+
+    _ensureCoverPreviewBindings();
+    _ensureCoverEditorBindings();
+    _coverImageState = {
+      ..._createCoverImageState(),
+      sourceUrl: url,
+      fileName: fileName || 'Cover image selected',
+      mimeType: _normalizeCoverMimeType(url),
+    };
+
+    _syncCoverEditorControls();
+    _toggleCoverEditor(true);
+    _renderCoverPreview(url, _coverImageState.fileName);
+
+    const loadToken = ++_coverLoadToken;
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => {
+      if (loadToken !== _coverLoadToken || _coverImageState.sourceUrl !== url) return;
+      _coverImageState.image = image;
+      _applyCoverAdjustments();
+    };
+    image.onerror = () => {
+      if (loadToken !== _coverLoadToken) return;
+      _toggleCoverEditor(false);
+      console.warn('Cover image could not be loaded for resizing.');
+    };
+    image.src = url;
+  }
+
+  function _syncCoverPreview(url = '', fileName = '') {
+    _loadCoverForEditing(url, fileName);
+  }
+
   function _insertBodyImage(url, altText = 'Uploaded image') {
+    if (IBlog.Writer?.insertTextAtCursor?.(`\n\n![${altText}](${url})\n\n`)) {
+      analyzeQuality();
+      return;
+    }
     const editor = document.getElementById('article-editor');
     if (!editor) return;
 
@@ -314,8 +594,7 @@ IBlog.Views = (() => {
         _insertBodyImage(imageUrl, file.name.replace(/\.[^.]+$/, '') || 'Uploaded image');
         IBlog.utils.toast('Image inserted into the draft.', 'success');
       } else {
-        _syncCoverPreview(imageUrl, file.name || 'Cover image selected');
-        IBlog.Writer?._renderNow?.();
+        _loadCoverForEditing(imageUrl, file.name || 'Cover image selected');
         IBlog.utils.toast('Image added as cover!', 'success');
       }
 
@@ -325,11 +604,32 @@ IBlog.Views = (() => {
   }
 
   function removeCoverImage() {
-    _syncCoverPreview('', '');
+    _coverImageState = _createCoverImageState();
+    _syncCoverEditorControls();
+    _toggleCoverEditor(false);
+    _renderCoverPreview('', '');
     IBlog.Writer?._renderNow?.();
   }
+
+  function resetCoverImageAdjustments() {
+    if (!_coverImageState.sourceUrl) return;
+    _coverImageState.scale = _coverFrameDefaults.scale;
+    _coverImageState.offsetX = _coverFrameDefaults.offsetX;
+    _coverImageState.offsetY = _coverFrameDefaults.offsetY;
+    _syncCoverEditorControls();
+    _applyCoverAdjustments();
+  }
+  function _writerPlainText(value) {
+    const scratch = document.createElement('div');
+    scratch.innerHTML = String(value || '');
+    return String(scratch.textContent || scratch.innerText || '')
+      .replace(/\s+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ \t]{2,}/g, ' ')
+      .trim();
+  }
 function analyzeQuality() {
-    const text  = document.getElementById('article-editor')?.value || '';
+    const text  = _writerPlainText(document.getElementById('article-editor')?.value || '');
     const title = document.getElementById('article-title')?.value  || '';
  
     if (text.length < 20) {
@@ -493,14 +793,17 @@ function analyzeQuality() {
 function legacyPublishArticle() {
     const title   = document.getElementById('article-title')?.value.trim();
     const text    = document.getElementById('article-editor')?.value.trim();
+    const plainText = _writerPlainText(text);
     const cat     = document.getElementById('article-cat')?.value;
     const imgUrl  = document.getElementById('article-img')?.value.trim() || '';
     const tagsVal = document.getElementById('article-tags')?.value || '';
     const editId  = document.getElementById('article-editor')?.dataset?.editId;
  
-    if (!title || !text) { IBlog.utils.toast('Add a title and content first!', 'error'); return; }
+    if (!title || !plainText) { IBlog.utils.toast('Add a title and content first!', 'error'); return; }
     const isPrem = IBlog.state.currentUser?.plan === 'premium';
     const tags   = tagsVal.split(',').map(t => t.trim()).filter(Boolean);
+    const readTime = Math.max(1, Math.ceil(Math.max(1, plainText.split(/\s+/).filter(Boolean).length) / 200)) + ' min';
+    const excerpt = plainText.substring(0,160) + (plainText.length>160?'...':'');
  
     if (editId) {
       const existing = IBlog.state.articles.find(x => x.id === parseInt(editId));
@@ -512,6 +815,8 @@ function legacyPublishArticle() {
           img: imgUrl || existing.img,
           readTime: Math.max(1, Math.ceil(text.split(' ').length/200)) + ' min',
           tags,
+          excerpt,
+          readTime,
         });
         delete document.getElementById('article-editor').dataset.editId;
         _clearWriter();
@@ -538,6 +843,9 @@ function legacyPublishArticle() {
       likes: 0, comments: [], reposts: 0,
       bookmarked: false, liked: false,
       quality: text.length > 300 ? 'high' : 'med',
+      excerpt,
+      readTime,
+      quality: plainText.length > 300 ? 'high' : 'med',
       isPremiumAuthor: isPrem,
       tags,
       date: 'Just now',
@@ -553,14 +861,15 @@ function legacyPublishArticle() {
   async function _saveWriterArticle(nextStatus) {
     const title   = document.getElementById('article-title')?.value.trim();
     const text    = document.getElementById('article-editor')?.value.trim();
+    const plainText = _writerPlainText(text);
     const cat     = document.getElementById('article-cat')?.value;
     const imgUrl  = document.getElementById('article-img')?.value.trim() || '';
     const tagsVal = document.getElementById('article-tags')?.value || '';
     const editor  = document.getElementById('article-editor');
     const editId  = editor?.dataset?.editId;
     const normalizedStatus = nextStatus === 'draft' ? 'draft' : 'published';
-    const hasContent = !!title || !!text;
-    if (normalizedStatus === 'published' && (!title || !text)) {
+    const hasContent = !!title || !!plainText;
+    if (normalizedStatus === 'published' && (!title || !plainText)) {
       IBlog.utils.toast('Add a title and content first!', 'error');
       return false;
     }
@@ -585,6 +894,8 @@ function legacyPublishArticle() {
       readingTime: Math.max(1, Math.ceil(Math.max(1, text.split(/\s+/).filter(Boolean).length) / 200)) + ' min',
       label: IBlog.Templates?.selectedId?.() || 'none',
     };
+    const excerpt = plainText.substring(0,160) + (plainText.length>160?'...':'');
+    payload.readingTime = Math.max(1, Math.ceil(Math.max(1, plainText.split(/\s+/).filter(Boolean).length) / 200)) + ' min';
 
     try {
       if (editId && /^\d+$/.test(String(editId)) && window.IBlogArticleSync?.update) {
@@ -624,6 +935,8 @@ function legacyPublishArticle() {
         tags,
         templateId: IBlog.Templates?.selectedId?.() || existing.templateId || null,
         status: normalizedStatus,
+        excerpt,
+        quality: plainText.length > 300 ? 'high' : 'med',
       });
       _clearWriter();
       IBlog.Feed.build();
@@ -656,6 +969,8 @@ function legacyPublishArticle() {
       tags,
       date: 'Just now',
       status: normalizedStatus,
+      excerpt,
+      quality: plainText.length > 300 ? 'high' : 'med',
     };
     IBlog.state.articles.unshift(a);
     _clearWriter();
@@ -699,6 +1014,8 @@ function legacyPublishArticle() {
     });
     document.getElementById('quality-overall')?.style.setProperty('display','none');
     document.getElementById('quality-tips').innerHTML = '';
+    removeCoverImage();
+    IBlog.Writer?.clear?.();
   }
  
 
@@ -780,7 +1097,7 @@ function legacyPublishArticle() {
     buildActivity,
     buildTrends,
     buildTemplates, selectTemplate, injectSection, analyzeQuality, publishArticle, saveDraftArticle,
-    handleImgUpload, removeCoverImage, refreshCoverPreview: _syncCoverPreview,
+    handleImgUpload, removeCoverImage, resetCoverImageAdjustments, refreshCoverPreview: _syncCoverPreview,
     buildMyArticles, buildSaved, buildNotifications, buildMessages,
      buildAccentPicker, buildCategorySelect,
   };

@@ -49,9 +49,9 @@
   box-shadow: 0 0 0 3px rgba(var(--accent-r),var(--accent-g),var(--accent-b),.1);
 }
 .comm-search-clear {
+  display: none !important;
   position: absolute;
   right: 12px;
-  display: flex;
   align-items: center;
   justify-content: center;
   width: 22px; height: 22px;

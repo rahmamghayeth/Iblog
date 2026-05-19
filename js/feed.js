@@ -14,6 +14,7 @@ IBlog.Feed = (() => {
     insight:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7z"/></svg>`,
     helpful:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>`,
     share:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>`,
+    eye:       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
     play:      `<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
     send:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
     close:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
@@ -31,6 +32,57 @@ IBlog.Feed = (() => {
       .replace(/"/g, '&quot;');
   }
 
+  function _looksLikeRichHtml(value) {
+    return /<(p|div|br|strong|b|em|i|u|span|mark|img|figure|figcaption|blockquote|h[1-6]|ul|ol|li)\b/i.test(String(value || ''));
+  }
+
+  function _safeStyle(styleText = '') {
+    const safe = [];
+    styleText.split(';').forEach((entry) => {
+      const [rawProp, rawValue] = entry.split(':');
+      const prop = String(rawProp || '').trim().toLowerCase();
+      const value = String(rawValue || '').trim();
+      if (!value) return;
+      if (prop === 'color' || prop === 'background-color') {
+        safe.push(`${prop}:${value}`);
+      }
+    });
+    return safe.join(';');
+  }
+
+  function _sanitizeRichNode(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return _escapeHtml(node.textContent || '');
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+
+    const tag = node.tagName.toLowerCase();
+    const allowed = new Set(['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'span', 'mark', 'img', 'figure', 'figcaption', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'ul', 'ol', 'li']);
+    const children = Array.from(node.childNodes).map(_sanitizeRichNode).join('');
+
+    if (!allowed.has(tag)) return children;
+    if (tag === 'br') return '<br>';
+    if (tag === 'img') {
+      const src = String(node.getAttribute('src') || '').trim();
+      if (!src || !/^(data:image\/|https?:\/\/|\/)/i.test(src)) return '';
+      return `<img src="${_escapeHtml(src)}" alt="${_escapeHtml(node.getAttribute('alt') || 'Article image')}">`;
+    }
+
+    let attrs = '';
+    if (tag === 'span' || tag === 'mark') {
+      const style = _safeStyle(node.getAttribute('style') || '');
+      if (style) attrs = ` style="${_escapeHtml(style)}"`;
+    }
+
+    return `<${tag}${attrs}>${children}</${tag}>`;
+  }
+
+  function _renderRichReaderBody(value) {
+    const scratch = document.createElement('div');
+    scratch.innerHTML = String(value || '');
+    return Array.from(scratch.childNodes).map(_sanitizeRichNode).join('');
+  }
+
   function _renderReaderBodyBlock(paragraph) {
     const trimmed = String(paragraph || '').trim();
     const imageMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
@@ -46,26 +98,143 @@ IBlog.Feed = (() => {
     return `<p>${_escapeHtml(trimmed)}</p>`;
   }
 
-  const REACTIONS = [
-    { key:'love',    label:'Love',       svgKey:'love',    color:'#e25555' },
-    { key:'insight', label:'Insightful', svgKey:'insight', color:'#4a90d9' },
-    { key:'helpful', label:'Helpful',    svgKey:'helpful', color:'#4caf7d' },
-    { key:'save',    label:'Save',       svgKey:'save',    color:'#b8960c' },
-  ];
+  function _renderReaderBody(body) {
+    const value = String(body || '').trim();
+    if (!value) return '';
+    if (_looksLikeRichHtml(value)) {
+      return `<div class="reader-rich-body">${_renderRichReaderBody(value)}</div>`;
+    }
+    return value.split('\n\n').filter((paragraph) => paragraph.trim()).map(_renderReaderBodyBlock).join('');
+  }
+
+  const VIEWED_KEY = 'iblog_reader_viewed';
 
   /* ── Filter ──────────────────────────────────────────── */
+  function _sortByLatest(articles) {
+    return [...articles].sort((a, b) => (Number(b?.id) || 0) - (Number(a?.id) || 0));
+  }
+
+  function _sortRecommended(articles) {
+    const directMatchedIds = Array.isArray(window.IBlogRecommendState?.directMatchedIds)
+      ? window.IBlogRecommendState.directMatchedIds.map((value) => String(value))
+      : [];
+    const recommendedIds = Array.isArray(window.IBlogRecommendState?.recommendedIds)
+      ? window.IBlogRecommendState.recommendedIds.map((value) => String(value))
+      : [];
+
+    if (!directMatchedIds.length && !recommendedIds.length) {
+      return _sortByLatest(articles);
+    }
+
+    const directRank = new Map(directMatchedIds.map((id, index) => [id, index]));
+    const relatedRank = new Map(recommendedIds.map((id, index) => [id, index]));
+
+    return [...articles].sort((a, b) => {
+      const aId = String(a?.id ?? '');
+      const bId = String(b?.id ?? '');
+      const aDirect = directRank.has(aId);
+      const bDirect = directRank.has(bId);
+
+      if (aDirect !== bDirect) return aDirect ? -1 : 1;
+      if (aDirect && bDirect) return directRank.get(aId) - directRank.get(bId);
+
+      const aRelated = relatedRank.has(aId) ? relatedRank.get(aId) : Number.MAX_SAFE_INTEGER;
+      const bRelated = relatedRank.has(bId) ? relatedRank.get(bId) : Number.MAX_SAFE_INTEGER;
+      if (aRelated !== bRelated) return aRelated - bRelated;
+
+      return (Number(b?.id) || 0) - (Number(a?.id) || 0);
+    });
+  }
+
   function _filter(tab) {
     const all = (IBlog.state.articles || []).filter(article => (article?.status || 'published') !== 'draft');
-    if(tab==='following') return all.filter((_,i)=>i%3===0);
-    if(tab==='trending')  return [...all].sort((a,b)=>(b.likes||0)-(a.likes||0));
-    if(tab==='latest')    return [...all].sort((a,b)=>b.id-a.id);
-    return all;
+    if (tab === 'following') {
+      const followingIds = Array.isArray(IBlog.state?.currentUser?.followingIds)
+        ? IBlog.state.currentUser.followingIds.map((value) => String(value))
+        : [];
+      if (!followingIds.length) return [];
+      return _sortByLatest(all.filter((article) => {
+        const authorId = article?.authorId ?? article?.userId ?? null;
+        return authorId !== null && followingIds.includes(String(authorId));
+      }));
+    }
+    if (tab === 'latest') {
+      return _sortByLatest(all);
+    }
+    return _sortRecommended(all);
+  }
+
+  function _viewStorageKey() {
+    return window.IBlogSession?.scopedKey?.(VIEWED_KEY) || VIEWED_KEY;
+  }
+
+  function _readViewedIds() {
+    try {
+      const parsed = JSON.parse(sessionStorage.getItem(_viewStorageKey()) || '[]');
+      return Array.isArray(parsed) ? parsed.map((value) => String(value)) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function _writeViewedIds(ids) {
+    try {
+      sessionStorage.setItem(_viewStorageKey(), JSON.stringify(Array.from(new Set(ids.map((value) => String(value))))));
+    } catch (_) {}
+  }
+
+  function _applyViewsCount(id, views) {
+    const article = (IBlog.state.articles || []).find((item) => String(item.id) === String(id));
+    if (article) article.views = Number(views || 0);
+
+    const formattedViews = IBlog.I18n?.formatNumber?.(views || 0) || String(views || 0);
+    const localizedViews = _t('feed.views', { count: formattedViews });
+
+    const cardViewsText = document.getElementById(`view-count-${id}`);
+    if (cardViewsText) {
+      const span = cardViewsText.querySelector('span');
+      if (span) span.textContent = localizedViews;
+    }
+
+    const readerViewsText = document.getElementById(`reader-view-count-${id}`);
+    if (readerViewsText) readerViewsText.textContent = localizedViews;
+
+    const readerMetaViews = document.getElementById(`reader-meta-views-${id}`);
+    if (readerMetaViews) readerMetaViews.textContent = localizedViews;
+
+    const readerCoverViews = document.getElementById(`reader-cover-views-${id}`);
+    if (readerCoverViews) readerCoverViews.textContent = localizedViews;
+
+    IBlog.MyArticles?.load?.();
+    window.RightRail?.refreshStats?.();
+    IBlog.Analytics?.init?.();
+  }
+
+  function _registerView(id) {
+    if (!/^\d+$/.test(String(id))) return;
+    const viewedIds = _readViewedIds();
+    if (viewedIds.includes(String(id))) return;
+
+    _writeViewedIds([...viewedIds, String(id)]);
+
+    fetch('backend/view/components/article/api-articles.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ action: 'view_increment', articleId: Number(id) }),
+    })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload?.ok) return;
+        _applyViewsCount(id, Number(payload.views || 0));
+      })
+      .catch(() => {});
   }
 
   /* ══════════════════════════════════════════════════════
      build
      ══════════════════════════════════════════════════════ */
-  function build(tab='foryou', containerId='feed-container') {
+  function build(tab='recommended', containerId='feed-container') {
     const container = document.getElementById(containerId);
     if(!container) return;
     container.innerHTML = '';
@@ -90,12 +259,6 @@ IBlog.Feed = (() => {
       } catch (err) {
         console.error('Feed card render failed:', article?.id, err);
         const AC = IBlog.ArticleCard || {};
-        const reactions = Array.isArray(AC.REACTIONS) ? AC.REACTIONS : [
-          { key: 'love', label: 'Love', svgKey: 'love', color: '#e25555' },
-          { key: 'insight', label: 'Insightful', svgKey: 'insight', color: '#4a90d9' },
-          { key: 'helpful', label: 'Helpful', svgKey: 'helpful', color: '#4caf7d' },
-          { key: 'save', label: 'Save', svgKey: 'save', color: '#b8960c' },
-        ];
         const icons = AC.SVG || {};
         const fallback = document.createElement('div');
         fallback.className = 'article-card';
@@ -110,13 +273,6 @@ IBlog.Feed = (() => {
           avatar: article?.authorAvatar || '',
           initial: (article?.author || 'A').slice(0, 1).toUpperCase(),
         }));
-        const reactionState = article?._reactions || { love: 0, insight: 0, helpful: 0, save: 0 };
-        const summaryHTML = typeof AC._summaryHTML === 'function'
-          ? AC._summaryHTML(article || {})
-          : '';
-        const activeReaction = typeof AC._reactionMeta === 'function'
-          ? AC._reactionMeta(article || {})
-          : null;
         const commentCount = Array.isArray(article?.comments) ? article.comments.length : 0;
         const repostCount = Number(article?.reposts || 0);
         const bookmarkLabel = article?._bookmarked ? 'Saved' : 'Save';
@@ -156,36 +312,16 @@ IBlog.Feed = (() => {
             <div class="podcast-player-inline" id="pod-${article?.id}" style="display:none;margin-bottom:12px"></div>
 
             <div class="interact-bar">
-              <div class="reaction-inline" id="reaction-inline-${article?.id}">
-                <button class="interact-btn react-trigger ${article?._userReaction ? 'reacted' : ''}"
-                        id="react-trigger-${article?.id}"
-                        onclick="IBlog.ArticleCard?.togglePicker?.(${safeOpenReaderId})">
-                  ${activeReaction ? (icons[activeReaction.svgKey] || activeReaction.label.slice(0, 1)) : (icons.love || '♡')}
-                  <span>${activeReaction ? fallbackText(activeReaction.label) : 'React'}</span>
-                </button>
-                <div class="reaction-summary" id="reaction-summary-${article?.id}">
-                  ${summaryHTML}
-                </div>
-                <div class="reaction-picker" id="reaction-picker-${article?.id}">
-                  <div class="reaction-picker-inner">
-                    ${reactions.map(r => `
-                      <button class="reaction-option ${article?._userReaction === r.key ? 'chosen' : ''}"
-                              data-key="${r.key}" title="${r.label}"
-                              style="--rc:${article?._userReaction === r.key ? r.color : 'var(--text2)'}"
-                              onclick="IBlog.ArticleCard?.setReaction?.(${safeOpenReaderId},'${r.key}')">
-                        <span class="r-icon">${icons[r.svgKey] || r.label.slice(0, 1)}</span>
-                        <span class="r-label">${fallbackText(r.label)}</span>
-                        <span class="r-count" id="rc-${article?.id}-${r.key}">${reactionState[r.key] || 0}</span>
-                      </button>`).join('')}
-                  </div>
-                </div>
-              </div>
               <button class="interact-btn ${article?._bookmarked ? 'bookmarked' : ''}"
                       id="bookmark-btn-${article?.id}"
                       onclick="IBlog.ArticleCard?.toggleBookmark?.(${safeOpenReaderId})">
                 ${article?._bookmarked ? (icons.saveFill || icons.save || '🔖') : (icons.save || '🔖')}
                 <span id="bookmark-label-${article?.id}">${bookmarkLabel}</span>
               </button>
+              <div class="interact-btn interact-stat" id="view-count-${article?.id}">
+                ${icons.eye || '👁'}
+                <span>${fallbackText(_t('feed.views', { count: IBlog.I18n?.formatNumber?.(article?.views || 0) || String(article?.views || 0) }))}</span>
+              </div>
               <button class="interact-btn" onclick="IBlog.ArticleCard?.toggleComments?.(${safeOpenReaderId})">
                 ${icons.comment || '💬'}
                 <span id="comment-count-${article?.id}">${commentCount}</span>
@@ -219,6 +355,7 @@ IBlog.Feed = (() => {
   function openReader(id) {
     const article = (IBlog.state.articles||[]).find(a => a.id === id || String(a.id) === String(id));
     if(!article) return;
+    _registerView(id);
     const displayArticle = IBlog.I18n?.localizeArticle?.(article) || article;
     const overlay = document.getElementById('article-reader-overlay');
     const content = document.getElementById('article-reader-content');
@@ -241,34 +378,10 @@ IBlog.Feed = (() => {
       : `background:${color};cursor:pointer`;
     const hasCover = !!(article.cover||article.img);
     const comments = article.comments||[];
-    article._reactions = article._reactions||{love:0,insight:0,helpful:0,save:0};
-    const activeReaction = typeof AC?._reactionMeta === 'function'
-      ? AC._reactionMeta(article)
-      : null;
 
-    const reactionPickerHTML = AC ? `
-      <div class="reaction-inline reader-reaction-inline" id="reader-reaction-inline-${id}">
-        <button class="reader-action-btn react-trigger ${article._userReaction?'reacted':''}"
-                id="reader-react-trigger-${id}"
-                onclick="IBlog.ArticleCard.toggleReaderPicker(${id})">
-          ${activeReaction ? AC.SVG[activeReaction.svgKey] : AC.SVG.love}
-          <span>${activeReaction ? activeReaction.label : _t('reactions.react')}</span>
-        </button>
-        <div class="reaction-summary" id="reader-reaction-summary-${id}">${AC._summaryHTML(article)}</div>
-        <div class="reaction-picker" id="reader-reaction-picker-${id}">
-          <div class="reaction-picker-inner">
-            ${REACTIONS.map(r=>`
-              <button class="reaction-option ${article._userReaction===r.key?'chosen':''}"
-                      data-key="${r.key}" title="${r.label}"
-                      style="--rc:${article._userReaction===r.key?r.color:'var(--text2)'}"
-                      onclick="IBlog.ArticleCard.setReaction(${id},'${r.key}')">
-                <span class="r-icon">${AC.SVG[r.svgKey]}</span>
-                <span class="r-label">${r.label}</span>
-                <span class="r-count" id="reader-rc-${id}-${r.key}">${article._reactions[r.key]||0}</span>
-              </button>`).join('')}
-          </div>
-        </div>
-      </div>` : '';
+    const localizedViews = _t('feed.views', {
+      count: IBlog.I18n?.formatNumber?.(article.views || 0) || String(article.views || 0),
+    });
 
     content.innerHTML = `
       <div class="article-reader">
@@ -286,7 +399,8 @@ IBlog.Feed = (() => {
             <div class="reader-cover-byline">
               <span>${displayArticle.author||article.author||''}</span><span>·</span>
               <span>${displayArticle.date||article.date||''}</span><span>·</span>
-              <span>${displayArticle.readTime||article.readTime||_t('misc.read', { count: 5 })}</span>
+              <span>${displayArticle.readTime||article.readTime||_t('misc.read', { count: 5 })}</span><span>·</span>
+              <span id="reader-cover-views-${id}">${localizedViews}</span>
             </div>
           </div>
         </div>` : `
@@ -306,7 +420,7 @@ IBlog.Feed = (() => {
                  data-profile="${authorProfilePayload.replace(/"/g, '&quot;')}"
                  onclick="IBlog.Profile?.openUserProfileFromElement?.(this)">
               <strong>${displayArticle.author||article.author||'Anonymous'}</strong>
-              <small>${displayArticle.date||article.date||''} · ${displayArticle.readTime||article.readTime||_t('misc.read', { count: 5 })}</small>
+              <small>${displayArticle.date||article.date||''} · ${displayArticle.readTime||article.readTime||_t('misc.read', { count: 5 })} · <span id="reader-meta-views-${id}">${localizedViews}</span></small>
             </div>
             <div class="reader-actions">
               <button class="reader-action-btn ${article._liked?'active-like':''}"
@@ -321,7 +435,10 @@ IBlog.Feed = (() => {
                 ${article._bookmarked?I.saveFill:I.save}
                 <span>${article._bookmarked ? _t('actions.saved') : _t('actions.save')}</span>
               </button>
-              ${reactionPickerHTML}
+              <div class="reader-action-btn reader-action-stat">
+                ${I.eye}
+                <span id="reader-view-count-${id}">${localizedViews}</span>
+              </div>
               <button class="reader-action-btn" onclick="IBlog.Feed.readerShare(${id})">
                 ${I.share} ${_t('actions.share')}
               </button>
@@ -339,8 +456,7 @@ IBlog.Feed = (() => {
               <small>Web Speech API · ${displayArticle.readTime||article.readTime||_t('misc.read', { count: 5 })}</small>
             </div>
             <div class="podcast-voice-btns">
-              <button class="voice-btn active" onclick="IBlog.Podcast.setVoice('default',this)">Default</button>
-              <button class="voice-btn" onclick="IBlog.Podcast.setVoice('female',this)">Female</button>
+              <button class="voice-btn active" onclick="IBlog.Podcast.setVoice('female',this)">Female</button>
               <button class="voice-btn" onclick="IBlog.Podcast.setVoice('male',this)">Male</button>
             </div>
           </div>
@@ -348,8 +464,7 @@ IBlog.Feed = (() => {
           ${(() => {
             const tplHTML = IBlog.Templates.renderForReader(article);
             if (tplHTML) return `<div class="reader-tpl-wrap">${tplHTML}</div>`;
-            return `<div class="reader-text">
-            ${(displayArticle.body||displayArticle.excerpt||article.body||article.excerpt||'').split('\n\n').filter(p=>p.trim()).map(_renderReaderBodyBlock).join('')}</div>`;
+            return `<div class="reader-text">${_renderReaderBody(displayArticle.body||displayArticle.excerpt||article.body||article.excerpt||'')}</div>`;
           })()}
 
           <!-- Tags -->
@@ -550,7 +665,8 @@ IBlog.Feed = (() => {
     input.value='';
     const tools=document.getElementById('composeTools');
     if(tools) tools.style.display='none';
-    build('foryou');
+    const activeTab = String(document.querySelector('.feed-tab.active')?.dataset?.feedTab || 'recommended');
+    build(activeTab);
     IBlog.utils.toast('Post published!','success');
   }
 

@@ -160,12 +160,13 @@ IBlog.Analytics = (() => {
       1,
       ...weeks.map((week) => Math.max(Number(week.views || 0), Number(week.likes || 0)))
     );
-    const guideValues = [maxValue, Math.round(maxValue * 0.66), Math.round(maxValue * 0.33), 0];
+    const chartMax = _resolveChartMax(maxValue);
+    const guideValues = [chartMax, chartMax * (2 / 3), chartMax * (1 / 3), 0];
 
     container.innerHTML = `
       <div class="an-chart-grid">
         <div class="an-chart-guides">
-          ${guideValues.map((value) => `<span>${_formatNumber(value)}</span>`).join('')}
+          ${guideValues.map((value) => `<span>${_formatAxisValue(value)}</span>`).join('')}
         </div>
         <div class="an-chart-bars-wrap">
           ${guideValues.slice(0, 3).map(() => '<div class="an-chart-line"></div>').join('')}
@@ -173,8 +174,8 @@ IBlog.Analytics = (() => {
             ${weeks.map((week) => {
               const views = Number(week.views || 0);
               const likes = Number(week.likes || 0);
-              const viewsHeight = Math.max(6, Math.round((views / maxValue) * 150));
-              const likesHeight = Math.max(likes > 0 ? 6 : 0, Math.round((likes / maxValue) * 120));
+              const viewsHeight = Math.max(6, Math.round((views / chartMax) * 150));
+              const likesHeight = Math.max(likes > 0 ? 6 : 0, Math.round((likes / chartMax) * 120));
               return `
                 <div class="an-chart-col" title="${_escapeHTML(week.label || '')}: ${views} ${_t('analytics.views')}, ${likes} ${_t('analytics.likes')}">
                   <div class="an-chart-bars-stack">
@@ -191,6 +192,21 @@ IBlog.Analytics = (() => {
         <span><i class="an-chart-dot views"></i>${_t('analytics.views')}</span>
         <span><i class="an-chart-dot likes"></i>${_t('analytics.likes')}</span>
       </div>`;
+  }
+
+  function _resolveChartMax(maxValue) {
+    const safeMax = Math.max(1, Number(maxValue || 0));
+    if (safeMax <= 1) return 1;
+    return Math.ceil(safeMax / 3) * 3;
+  }
+
+  function _formatAxisValue(value) {
+    const numeric = Math.max(0, Number(value || 0));
+    const locale = IBlog.I18n?.meta?.().locale || 'en-US';
+    return new Intl.NumberFormat(locale, {
+      minimumFractionDigits: numeric > 0 && numeric < 10 && !Number.isInteger(numeric) ? 1 : 0,
+      maximumFractionDigits: numeric > 0 && numeric < 10 && !Number.isInteger(numeric) ? 1 : 0,
+    }).format(numeric);
   }
 
   async function _loadTopArticles() {
@@ -273,6 +289,25 @@ IBlog.Analytics = (() => {
       const weekIdx = Math.floor(index / 7);
       if (weeks[weekIdx]) weeks[weekIdx].push(day);
     });
+    const visibleWeeks = weeks.filter((week) => week.length > 0);
+    const latestDate = new Date(days[days.length - 1].date);
+    const currentMonthKey = `${latestDate.getFullYear()}-${latestDate.getMonth()}`;
+    let currentMonthStartWeek = 0;
+
+    for (let i = visibleWeeks.length - 1; i >= 0; i -= 1) {
+      const isCurrentMonthWeek = visibleWeeks[i].some((day) => {
+        const date = new Date(day.date);
+        return `${date.getFullYear()}-${date.getMonth()}` === currentMonthKey;
+      });
+
+      if (isCurrentMonthWeek) {
+        currentMonthStartWeek = i;
+      } else if (currentMonthStartWeek !== 0) {
+        break;
+      }
+    }
+
+    const orderedWeeks = visibleWeeks.slice(currentMonthStartWeek).concat(visibleWeeks.slice(0, currentMonthStartWeek));
 
     container.innerHTML = `
       <div class="an-heatmap-wrap">
@@ -284,7 +319,7 @@ IBlog.Analytics = (() => {
           }).join('')}
         </div>
         <div class="an-heatmap-grid">
-          ${weeks.filter((week) => week.length > 0).map((week) => `
+          ${orderedWeeks.map((week) => `
             <div class="an-heatmap-week">
               ${week.map((day) => {
                 const count = Number(day.count || 0);
@@ -298,17 +333,20 @@ IBlog.Analytics = (() => {
 
     let lastMonth = '';
     const months = [];
-    days.forEach((day, index) => {
-      const month = monthFormatter.format(new Date(day.date));
-      if (month !== lastMonth && index % 7 === 0) {
-        months.push({ weekIdx: Math.floor(index / 7), label: month });
+    orderedWeeks.forEach((week, index) => {
+      const pivotDay = week[0];
+      if (!pivotDay) return;
+
+      const month = monthFormatter.format(new Date(pivotDay.date));
+      if (month !== lastMonth) {
+        months.push({ weekIdx: index, label: month });
         lastMonth = month;
       }
     });
 
     if (monthsEl) {
       monthsEl.innerHTML = months.map((month, index) => {
-        const nextIdx = months[index + 1]?.weekIdx ?? 53;
+        const nextIdx = months[index + 1]?.weekIdx ?? orderedWeeks.length;
         return `<span style="min-width:${Math.max(24, (nextIdx - month.weekIdx) * 15)}px">${month.label}</span>`;
       }).join('');
     }

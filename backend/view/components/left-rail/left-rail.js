@@ -46,14 +46,6 @@ IBlog.LeftRail = (() => {
             <div class="nav-item" onclick="IBlog.Dashboard.signout(); IBlog.LeftRail.toggleMobile(false)">${t('leftRail.signOut')}</div>
           </div>
 
-          <div class="locale-panel">
-            <div class="locale-panel-label">${t('leftRail.language')}</div>
-            <p style="margin:10px 0 12px;color:var(--text2);font-size:12px;line-height:1.7">${t('leftRail.languageHint')}</p>
-            <select class="iblog-language-select" aria-label="${t('leftRail.language')}">
-              ${IBlog.I18n?.languageOptionsMarkup?.() || ''}
-            </select>
-          </div>
-
           <div class="dark-toggle">
             <label class="toggle-switch"><input type="checkbox" id="dark-toggle-input" onchange="IBlog.Dashboard.toggleDark()" /><div class="toggle-track"></div></label>
             <span class="toggle-label" id="dark-toggle-label">${t('leftRail.light')}</span>
@@ -61,9 +53,6 @@ IBlog.LeftRail = (() => {
         </div>
       </div>`;
     _applyUser();
-    document.querySelectorAll('.iblog-language-select').forEach((select) => {
-      select.value = IBlog.I18n?.getLocale?.() || 'en';
-    });
     window.dispatchEvent(new CustomEvent('iblog:locale-changed', {
       detail: { locale: IBlog.I18n?.getLocale?.() || 'en' },
     }));

@@ -229,7 +229,20 @@ IBlog.Templates = (() => {
 
   /* ── Helper ──────────────────────────────────────────── */
   function _paras(text) {
-    return text.split('\n\n').map(p=>p.trim()).filter(Boolean);
+    const value = String(text || '').trim();
+    if (!value) return [];
+    if (!/<(p|div|br|strong|b|em|i|u|span|mark|img|figure|figcaption|blockquote|h[1-6]|ul|ol|li)\b/i.test(value)) {
+      return value.split('\n\n').map(p=>p.trim()).filter(Boolean);
+    }
+
+    const scratch = document.createElement('div');
+    scratch.innerHTML = value;
+    const blocks = Array.from(scratch.querySelectorAll('h1,h2,h3,h4,h5,h6,p,blockquote,li,figcaption'))
+      .map((node) => String(node.textContent || '').trim())
+      .filter(Boolean);
+
+    if (blocks.length) return blocks;
+    return String(scratch.textContent || '').split('\n\n').map(p=>p.trim()).filter(Boolean);
   }
 
   function get(id)  { return TEMPLATES.find(t=>t.id===id)||null; }

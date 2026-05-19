@@ -143,7 +143,16 @@ IBlog.Feed = (() => {
      ══════════════════════════════════════════════════════ */
   function _filter(tab) {
     const all = IBlog.state.articles||[];
-    if (tab==='following') return all.filter((_,i)=>i%3===0);
+    if (tab==='following') {
+      const followingIds = Array.isArray(IBlog.state?.currentUser?.followingIds)
+        ? IBlog.state.currentUser.followingIds.map((value) => String(value))
+        : [];
+      if (!followingIds.length) return [];
+      return all.filter((article) => {
+        const authorId = article?.authorId ?? article?.userId ?? null;
+        return authorId !== null && followingIds.includes(String(authorId));
+      });
+    }
     if (tab==='trending')  return [...all].sort((a,b)=>(b.likes||0)-(a.likes||0));
     if (tab==='latest')    return [...all].sort((a,b)=>b.id-a.id);
     return all;
@@ -454,7 +463,6 @@ IBlog.Feed = (() => {
 
   function _readerCommentHTML(c) {
     return `<div class="reader-comment-item">
-      <div class="reader-comment-avatar">${(c.author||'U')[0].toUpperCase()}</div>
       <div class="reader-comment-bubble"><strong>${c.author||'User'}</strong><p>${c.text}</p></div>
     </div>`;
   }

@@ -90,7 +90,7 @@ IBlog.Communities = (() => {
           <input
             id="comm-search"
             class="comm-search-input"
-            type="search"
+            type="text"
             placeholder="${_t('communities.searchPlaceholder')}"
             autocomplete="off"
           />

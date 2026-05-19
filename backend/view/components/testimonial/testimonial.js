@@ -100,8 +100,7 @@
               <div class="testimonial-stars">${stars(t.stars)}</div>
               <p class="testimonial-text">"${t.text}"</p>
               <div class="testimonial-author">
-                <div class="testimonial-avatar" style="background:${t.color}">${t.avatar}</div>
-                <div>
+                <div class="testimonial-identity">
                   <strong class="testimonial-name">${t.name}</strong>
                   <span class="testimonial-role">${t.role}</span>
                 </div>
