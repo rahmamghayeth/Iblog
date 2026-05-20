@@ -68,9 +68,13 @@
     user.initial = user.initial || (user.name ? user.name[0].toUpperCase() : 'A');
     window.IBlog = window.IBlog || {};
     IBlog.state = IBlog.state || {};
-    if (window.IBlogSession?.setUser) {
+    if (window.IBlogSession?.replaceUser) {
+      IBlogSession.replaceUser(user);
+    } else if (window.IBlogSession?.setUser) {
       IBlogSession.setUser(user);
     } else {
+      sessionStorage.removeItem('pendingUser');
+      localStorage.removeItem('pendingUser');
       IBlog.state.currentUser = user;
       sessionStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('user', JSON.stringify(user));
@@ -292,12 +296,16 @@
     const btn = document.querySelector('#modal-signin .btn-primary');
     if (btn) { btn.textContent = 'Signing in...'; btn.disabled = true; }
     apiFetch({ action: 'signin', email, password })
-      .then(data => {
+      .then(async (data) => {
         if (data.redirect) {
           window.location.href = data.redirect;
           return;
         }
         _applyUser(data.user);
+        const syncedUser = await window.IBlogSession?.syncFromServer?.({ clearOnFailure: true });
+        if (syncedUser) {
+          _applyUser(syncedUser);
+        }
         closeAllModals();
         goToDashboard(window._pendingArticleId || null);
       })

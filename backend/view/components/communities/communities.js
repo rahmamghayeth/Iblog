@@ -62,6 +62,16 @@ IBlog.Communities = (() => {
 
   function _ensureCommunitiesView() {
     if (document.getElementById('view-communities') && document.getElementById('comm-grid')) {
+      const panel = document.getElementById('view-communities');
+      panel?.querySelector('.view-header h1')?.replaceChildren(document.createTextNode(_t('communities.title')));
+      const subtitle = panel?.querySelector('.view-header p');
+      if (subtitle) subtitle.textContent = _t('communities.subtitle');
+      const existingCreateBtn = document.getElementById('create-community-btn');
+      if (existingCreateBtn) existingCreateBtn.textContent = _t('communities.create');
+      const existingSearch = document.getElementById('comm-search');
+      if (existingSearch) existingSearch.placeholder = _t('communities.searchPlaceholder');
+      const existingClear = document.getElementById('comm-search-clear');
+      if (existingClear) existingClear.setAttribute('aria-label', _t('communities.clearAria'));
       return;
     }
 

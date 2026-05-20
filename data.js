@@ -196,20 +196,284 @@ IBlog.COMMUNITIES = [];
 
 // ─── Country Data for Map ─────────────────────────────────
 IBlog.COUNTRY_DATA = (() => {
+  const articleImageOverrides = {
+    'What People Are Reading This Week': 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80',
+    'The Global Knowledge Shift': 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
+    'Why Local Stories Travel Farther Than Ever': 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
+  };
+
+  const subjectImageSets = [
+    {
+      keywords: ['ai', 'technology', 'deep tech', 'product', 'mobile', 'interfaces', 'manufacturing'],
+      images: [
+        'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1484417894907-623942c8ee29?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['design', 'architecture', 'interfaces', 'craft', 'beautiful'],
+      images: [
+        'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1497366412874-3415097a27e7?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['creator', 'community', 'audience', 'bilingual', 'social', 'media', 'readers'],
+      images: [
+        'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1515169067868-5387ec356754?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['travel', 'destination', 'coast', 'city stories', 'mediterranean', 'hospitality', 'outdoor'],
+      images: [
+        'https://images.unsplash.com/photo-1488085061387-422e29b40080?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['finance', 'capital', 'business', 'economy', 'fintech', 'investment', 'markets'],
+      images: [
+        'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1462899006636-339e08d1844e?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1559526324-593bc073d938?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['education', 'learning', 'classroom', 'teaches'],
+      images: [
+        'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1513258496099-48168024aec0?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1516534775068-ba3e7458af70?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['science', 'research', 'labs', 'knowledge', 'engineering'],
+      images: [
+        'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1576086213369-97a306d36557?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1581093458791-9d42e5d1f0f7?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['climate', 'environment', 'nature', 'coastal', 'outdoor culture', 'justice'],
+      images: [
+        'https://images.unsplash.com/photo-1473448912268-2022ce9509d8?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1466611653911-95081537e5b7?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1500375592092-40eb2168fd21?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['history', 'historical', 'heritage'],
+      images: [
+        'https://images.unsplash.com/photo-1521292270410-a8c4d716d518?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1524499982521-1ffd58dd89ea?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1467269204594-9661b134dd2b?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1473186578172-c141e6798cf4?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['music', 'entertainment', 'sports'],
+      images: [
+        'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1547347298-4074fc3086f0?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['policy', 'politics', 'public services', 'geopolitics', 'infrastructure', 'civic'],
+      images: [
+        'https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1431540015161-0bf868a2d407?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1444723121867-7a241cacace9?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['food', 'taste'],
+      images: [
+        'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+    {
+      keywords: ['writing', 'essays', 'journalism', 'publishing', 'storytelling'],
+      images: [
+        'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1491841550275-ad7854e35ca6?auto=format&fit=crop&w=1200&q=80',
+      ],
+    },
+  ];
+
+  const fallbackImages = [
+    'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=1200&q=80',
+  ];
+
+  function pickSubjectImage(title, topics, summary) {
+    if (articleImageOverrides[title]) return articleImageOverrides[title];
+
+    const haystack = `${title} ${topics.join(' ')} ${summary}`.toLowerCase();
+    const matchingSets = subjectImageSets.filter((entry) =>
+      entry.keywords.some((keyword) => haystack.includes(keyword))
+    );
+    const pool = Array.from(new Set([
+      ...(matchingSets.length ? matchingSets.flatMap((entry) => entry.images) : []),
+      ...fallbackImages,
+    ]));
+    const seed = Array.from(title).reduce((total, char) => total + char.charCodeAt(0), 0);
+    return pool[seed % pool.length];
+  }
+
+  function inferArticleProfile(title, topics, summary) {
+    const haystack = `${title} ${topics.join(' ')} ${summary}`.toLowerCase();
+    const profiles = [
+      {
+        keywords: ['ai', 'technology', 'product', 'mobile', 'engineering', 'tech', 'lab'],
+        category: 'Technology',
+        angle: 'tools, product decisions, and execution habits',
+        stakes: 'how teams turn technical momentum into useful products',
+      },
+      {
+        keywords: ['design', 'interface', 'architecture', 'craft'],
+        category: 'Design',
+        angle: 'structure, clarity, and visual choices',
+        stakes: 'why better design decisions change how people trust the product',
+      },
+      {
+        keywords: ['travel', 'city', 'coast', 'destination', 'outdoor'],
+        category: 'Travel',
+        angle: 'place, movement, and lived local details',
+        stakes: 'what makes a destination feel memorable instead of generic',
+      },
+      {
+        keywords: ['finance', 'capital', 'economy', 'market', 'investment', 'fintech'],
+        category: 'Finance',
+        angle: 'capital flows, risk, and market signals',
+        stakes: 'what readers should understand behind the numbers',
+      },
+      {
+        keywords: ['creator', 'community', 'audience', 'media', 'social', 'music'],
+        category: 'Culture',
+        angle: 'audience behavior, distribution, and community growth',
+        stakes: 'why certain stories travel farther and build stronger loyalty',
+      },
+      {
+        keywords: ['science', 'research', 'knowledge', 'education', 'learning'],
+        category: 'Science',
+        angle: 'evidence, learning systems, and practical outcomes',
+        stakes: 'how knowledge moves from research into public understanding',
+      },
+      {
+        keywords: ['policy', 'politics', 'public', 'infrastructure', 'civic'],
+        category: 'Politics',
+        angle: 'institutions, delivery, and public impact',
+        stakes: 'what changes when systems are judged by outcomes instead of slogans',
+      },
+      {
+        keywords: ['history', 'heritage'],
+        category: 'History',
+        angle: 'memory, continuity, and cultural identity',
+        stakes: 'how old structures keep shaping present-day choices',
+      },
+      {
+        keywords: ['food', 'taste'],
+        category: 'Food',
+        angle: 'taste, craft, and cultural routine',
+        stakes: 'why daily rituals often explain a place better than headlines',
+      },
+      {
+        keywords: ['writing', 'essays', 'journalism', 'publishing', 'storytelling'],
+        category: 'Writing',
+        angle: 'editorial judgment, voice, and narrative structure',
+        stakes: 'what makes a written piece feel worth finishing and sharing',
+      },
+    ];
+
+    return profiles.find((profile) => profile.keywords.some((keyword) => haystack.includes(keyword))) || {
+      category: topics[0] || 'Global',
+      angle: 'the local shifts shaping this conversation',
+      stakes: 'why this subject is pulling readers in right now',
+    };
+  }
+
+  function buildMapArticle(country, summary, topics, articleTuple, index) {
+    const [title, author, readTime = '5 min'] = articleTuple;
+    const primaryTopic = topics[index % (topics.length || 1)] || 'Global';
+    const secondaryTopic = topics[(index + 1) % (topics.length || 1)] || primaryTopic;
+    const profile = inferArticleProfile(title, topics, summary);
+    const subject = title.replace(/^(how|why|what)\s+/i, '').replace(/[.?!]$/g, '').trim();
+    const excerpt = `${title} follows how ${primaryTopic.toLowerCase()} is evolving in ${country}, with a focus on ${profile.angle}.`;
+    const body = `${title} looks beyond the headline and follows the concrete forces shaping ${country}'s ${primaryTopic.toLowerCase()} conversation.\n\nUsing ${summary.charAt(0).toLowerCase()}${summary.slice(1).replace(/[. ]*$/, '')}, the piece tracks ${profile.angle} through a regional lens instead of treating it like a generic global trend.\n\nIt also connects ${primaryTopic.toLowerCase()} to ${secondaryTopic.toLowerCase()}, showing ${profile.stakes}. The result is a sharper, more grounded read on ${subject || 'the story'} and why it matters now.`;
+    const image = pickSubjectImage(title, topics, `${summary} ${profile.angle} ${profile.stakes}`);
+
+    return {
+      title,
+      author,
+      readTime,
+      category: profile.category,
+      excerpt,
+      body,
+      tags: [country, primaryTopic, secondaryTopic],
+      img: image,
+      cover: image,
+    };
+  }
+
   const makeCountry = (flag, coords, summary, topics, articles) => ({
     flag,
     coords,
     summary,
     topics,
-    articles: articles.map(([title, author, readTime = '5 min']) => ({
-      title,
-      author,
-      readTime,
-      img: '',
-    })),
+    articles: articles.map((articleTuple, index) => buildMapArticle(flag === '🌐' ? 'World' : '', summary, topics, articleTuple, index)),
   });
 
-  return {
+  const countries = {
     World: makeCountry('🌐', [20, 10], 'A fast global pulse built from the most active reading regions.', ['Global', 'Trending', 'Editors Pick'], [
       ['What People Are Reading This Week', 'IBlog Editors'],
       ['The Global Knowledge Shift', 'IBlog Data Desk'],
@@ -351,7 +615,31 @@ IBlog.COUNTRY_DATA = (() => {
       ['Nature Reporting With Emotional Clarity', 'Aria Thompson'],
       ['Why Calm Design Wins Reader Loyalty', 'Ethan McKenzie'],
     ]),
+    Russia: makeCountry('\uD83C\uDDF7\uD83C\uDDFA', [61.5, 105.3], 'Large-scale engineering, geopolitics, energy, and deep scientific analysis.', ['Science', 'Politics', 'Energy'], [
+      ['Why Engineering Narratives Still Shape Global Strategy', 'Irina Volkova'],
+      ['Energy Systems Readers Actually Want Explained', 'Maksim Petrov'],
+    ]),
+    Greece: makeCountry('\uD83C\uDDEC\uD83C\uDDF7', [39.1, 21.8], 'History, travel, and economic storytelling with a Mediterranean lens.', ['History', 'Travel', 'Economics'], [
+      ['Why Ancient Places Still Drive Modern Travel Writing', 'Eleni Papadopoulos'],
+      ['Economic Stories With a Human Coastline', 'Nikos Andreou'],
+    ]),
+    Norway: makeCountry('\uD83C\uDDF3\uD83C\uDDF4', [60.5, 8.5], 'Climate, energy, and calm long-form reporting about systems that work.', ['Climate', 'Energy', 'Travel'], [
+      ['Why Nordic Climate Reporting Feels So Actionable', 'Astrid Larsen'],
+      ['Energy Transitions Explained Without the Noise', 'Henrik Solberg'],
+    ]),
+    Sweden: makeCountry('\uD83C\uDDF8\uD83C\uDDEA', [62, 15], 'Design, startups, and social innovation told with clarity and restraint.', ['Design', 'Startups', 'Culture'], [
+      ['What Scandinavian Product Writing Gets Right', 'Maja Lindstrom'],
+      ['Social Innovation Stories That Readers Trust', 'Oskar Nyberg'],
+    ]),
   };
+
+  Object.entries(countries).forEach(([country, data]) => {
+    data.articles = data.articles.map((article, index) =>
+      buildMapArticle(country, data.summary, data.topics, [article.title, article.author, article.readTime], index)
+    );
+  });
+
+  return countries;
 })();
 
 // ─── Trends ───────────────────────────────────────────────

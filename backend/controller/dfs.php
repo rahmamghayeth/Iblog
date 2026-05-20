@@ -95,19 +95,19 @@ function interest_aliases(string $interest): array
 
 function token_matches_interest(array $tokens, string $interest): bool
 {
-    $aliases = interest_aliases($interest);
+    $interestValue = canonical_interest_text($interest);
+    if ($interestValue === '') {
+        return false;
+    }
+
     foreach ($tokens as $token) {
         $tokenValue = canonical_interest_text((string) $token);
         if ($tokenValue === '') {
             continue;
         }
-        foreach ($aliases as $alias) {
-            if ($alias === '') {
-                continue;
-            }
-            if ($tokenValue === $alias || str_contains($tokenValue, $alias) || str_contains($alias, $tokenValue)) {
-                return true;
-            }
+
+        if ($tokenValue === $interestValue) {
+            return true;
         }
     }
 
@@ -224,7 +224,6 @@ function get_articles_by_interests(PDO $cnx, array $interestLabels): array
         ];
 
         if ($interests === []) {
-            $rows[] = $row;
             continue;
         }
 

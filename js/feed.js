@@ -108,6 +108,7 @@ IBlog.Feed = (() => {
   }
 
   const VIEWED_KEY = 'iblog_reader_viewed';
+  const VIEW_COOLDOWN_MS = 30000;
 
   /* ── Filter ──────────────────────────────────────────── */
   function _sortByLatest(articles) {
@@ -146,6 +147,19 @@ IBlog.Feed = (() => {
     });
   }
 
+  function _filterRecommendedArticles(articles) {
+    const recommendedIds = Array.isArray(window.IBlogRecommendState?.recommendedIds)
+      ? window.IBlogRecommendState.recommendedIds.map((value) => String(value))
+      : [];
+
+    if (!recommendedIds.length) {
+      return [];
+    }
+
+    const recommendedSet = new Set(recommendedIds);
+    return _sortRecommended(articles.filter((article) => recommendedSet.has(String(article?.id ?? ''))));
+  }
+
   function _filter(tab) {
     const all = (IBlog.state.articles || []).filter(article => (article?.status || 'published') !== 'draft');
     if (tab === 'following') {
@@ -161,25 +175,31 @@ IBlog.Feed = (() => {
     if (tab === 'latest') {
       return _sortByLatest(all);
     }
-    return _sortRecommended(all);
+    return _filterRecommendedArticles(all);
   }
 
   function _viewStorageKey() {
     return window.IBlogSession?.scopedKey?.(VIEWED_KEY) || VIEWED_KEY;
   }
 
-  function _readViewedIds() {
+  function _readViewedState() {
     try {
-      const parsed = JSON.parse(sessionStorage.getItem(_viewStorageKey()) || '[]');
-      return Array.isArray(parsed) ? parsed.map((value) => String(value)) : [];
+      const parsed = JSON.parse(sessionStorage.getItem(_viewStorageKey()) || '{}');
+      if (Array.isArray(parsed)) {
+        return parsed.reduce((acc, value) => {
+          acc[String(value)] = 0;
+          return acc;
+        }, {});
+      }
+      return parsed && typeof parsed === 'object' ? parsed : {};
     } catch (_) {
-      return [];
+      return {};
     }
   }
 
-  function _writeViewedIds(ids) {
+  function _writeViewedState(state) {
     try {
-      sessionStorage.setItem(_viewStorageKey(), JSON.stringify(Array.from(new Set(ids.map((value) => String(value))))));
+      sessionStorage.setItem(_viewStorageKey(), JSON.stringify(state && typeof state === 'object' ? state : {}));
     } catch (_) {}
   }
 
@@ -212,10 +232,14 @@ IBlog.Feed = (() => {
 
   function _registerView(id) {
     if (!/^\d+$/.test(String(id))) return;
-    const viewedIds = _readViewedIds();
-    if (viewedIds.includes(String(id))) return;
+    const articleId = String(id);
+    const now = Date.now();
+    const viewedState = _readViewedState();
+    const lastViewedAt = Number(viewedState[articleId] || 0);
+    if ((now - lastViewedAt) < VIEW_COOLDOWN_MS) return;
 
-    _writeViewedIds([...viewedIds, String(id)]);
+    viewedState[articleId] = now;
+    _writeViewedState(viewedState);
 
     fetch('backend/view/components/article/api-articles.php', {
       method: 'POST',
@@ -228,7 +252,11 @@ IBlog.Feed = (() => {
         if (!payload?.ok) return;
         _applyViewsCount(id, Number(payload.views || 0));
       })
-      .catch(() => {});
+      .catch(() => {
+        const nextState = _readViewedState();
+        delete nextState[articleId];
+        _writeViewedState(nextState);
+      });
   }
 
   /* ══════════════════════════════════════════════════════
@@ -548,12 +576,12 @@ IBlog.Feed = (() => {
         window.RightRail?.refreshStats?.();
         window.RightRail?.refreshAuthors?.();
         IBlog.Analytics?.init?.();
-        IBlog.Notifications?.push?.(
-          payload.liked
-            ? `You liked <strong>${String(article.title || 'this article')}</strong>.`
-            : `You removed your like from <strong>${String(article.title || 'this article')}</strong>.`,
-          'like'
-        );
+        if (payload.liked) {
+          IBlog.Notifications?.push?.({
+            messageKey: 'notifications.likedArticle',
+            messageVars: { title: String(article.title || 'this article') },
+          }, 'like');
+        }
         IBlog.utils.toast(payload.liked?'Liked!':'Like removed');
         return;
       }catch(error){
@@ -563,12 +591,12 @@ IBlog.Feed = (() => {
     }
 
     applyState(!article._liked, Math.max(0,(article.likes||0)+(!article._liked?1:-1)));
-    IBlog.Notifications?.push?.(
-      article._liked
-        ? `You liked <strong>${String(article.title || 'this article')}</strong>.`
-        : `You removed your like from <strong>${String(article.title || 'this article')}</strong>.`,
-      'like'
-    );
+    if (article._liked) {
+      IBlog.Notifications?.push?.({
+        messageKey: 'notifications.likedArticle',
+        messageVars: { title: String(article.title || 'this article') },
+      }, 'like');
+    }
     IBlog.utils.toast(article._liked?'Liked!':'Like removed');
   }
 
@@ -629,7 +657,10 @@ IBlog.Feed = (() => {
     window.RightRail?.refreshStats?.();
     IBlog.Analytics?.init?.();
     IBlog.Activity?.init?.();
-    IBlog.Notifications?.push?.(`New comment on <strong>${String(article.title || 'your article')}</strong>.`, 'comment');
+    IBlog.Notifications?.push?.({
+      messageKey: 'notifications.commentedArticle',
+      messageVars: { title: String(article.title || 'your article') },
+    }, 'comment');
     IBlog.utils.toast('Comment posted!','success');
   }
 

@@ -400,9 +400,15 @@
       label = _t('search.strongMatch');
     }
 
+    const fMeasure = Number(item.fMeasure || 0);
+    const precision = Number(item.precision || 0);
+    const recall = Number(item.recall || 0);
+
     return {
       label,
-      detail: _t('search.score', { score: confidence ? confidence.toFixed(2) : '0.00' }),
+      detail: fMeasure > 0
+        ? `F ${fMeasure.toFixed(2)} · P ${precision.toFixed(2)} · R ${recall.toFixed(2)}`
+        : _t('search.score', { score: confidence ? confidence.toFixed(2) : '0.00' }),
     };
   }
 
@@ -451,11 +457,140 @@
 
     return merged
       .sort((a, b) =>
-        (Number(b.confidence || 0) - Number(a.confidence || 0))
+        (Number(b.fMeasure || 0) - Number(a.fMeasure || 0))
+        || (Number(b.precision || 0) - Number(a.precision || 0))
+        || (Number(b.recall || 0) - Number(a.recall || 0))
+        || (Number(b.confidence || 0) - Number(a.confidence || 0))
         || (Number(b.score || 0) - Number(a.score || 0))
         || String(a.title || a.name || '').localeCompare(String(b.title || b.name || ''))
       )
       .slice(0, 20);
+  }
+
+  function tokenizeSearchValue(value) {
+    return normalizeIdentity(value)
+      .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+      .split(/\s+/)
+      .filter((token) => token.length >= 2);
+  }
+
+  function tokenMatchStrength(queryToken, fieldToken) {
+    const queryValue = normalizeIdentity(queryToken);
+    const fieldValue = normalizeIdentity(fieldToken);
+    if (!queryValue || !fieldValue) return 0;
+    if (fieldValue === queryValue) return 1;
+    if (fieldValue.startsWith(queryValue) || queryValue.startsWith(fieldValue)) return 0.82;
+    if (fieldValue.includes(queryValue) || queryValue.includes(fieldValue)) return 0.62;
+    return 0;
+  }
+
+  function fieldMetrics(queryTokens, fieldValue = '') {
+    const fieldTokens = tokenizeSearchValue(fieldValue);
+    if (!queryTokens.length || !fieldTokens.length) {
+      return { precision: 0, recall: 0, fMeasure: 0, exact: false, prefix: false, contains: false };
+    }
+
+    let queryHitTotal = 0;
+    queryTokens.forEach((queryToken) => {
+      let best = 0;
+      fieldTokens.forEach((fieldToken) => {
+        best = Math.max(best, tokenMatchStrength(queryToken, fieldToken));
+      });
+      queryHitTotal += best;
+    });
+
+    let fieldHitTotal = 0;
+    fieldTokens.forEach((fieldToken) => {
+      let best = 0;
+      queryTokens.forEach((queryToken) => {
+        best = Math.max(best, tokenMatchStrength(queryToken, fieldToken));
+      });
+      fieldHitTotal += best;
+    });
+
+    const precision = Math.min(1, fieldHitTotal / fieldTokens.length);
+    const recall = Math.min(1, queryHitTotal / queryTokens.length);
+    const fMeasure = (precision > 0 && recall > 0)
+      ? (2 * precision * recall) / (precision + recall)
+      : 0;
+    const normalizedValue = normalizeIdentity(fieldValue);
+    const normalizedQuery = queryTokens.join(' ');
+
+    return {
+      precision: Number(precision.toFixed(4)),
+      recall: Number(recall.toFixed(4)),
+      fMeasure: Number(fMeasure.toFixed(4)),
+      exact: !!normalizedQuery && (normalizedValue === normalizedQuery || fieldTokens.includes(normalizedQuery)),
+      prefix: !!normalizedQuery && (normalizedValue.startsWith(normalizedQuery) || fieldTokens.some((token) => token.startsWith(normalizedQuery))),
+      contains: !!normalizedQuery && normalizedValue.includes(normalizedQuery),
+    };
+  }
+
+  function localSearchMetrics(query, fields = []) {
+    const queryTokens = tokenizeSearchValue(query);
+    if (!queryTokens.length) {
+      return { score: 0, confidence: 0, matchTier: 'good_match', precision: 0, recall: 0, fMeasure: 0 };
+    }
+
+    let weightedPrecision = 0;
+    let weightedRecall = 0;
+    let matchedWeight = 0;
+    let score = 0;
+    let exact = false;
+    let prefix = false;
+    let contains = false;
+    let topicalBoost = 0;
+
+    fields.forEach((entry) => {
+      const value = String(entry?.value || '').trim();
+      const weight = Number(entry?.weight || 0);
+      const topical = !!entry?.topic;
+      if (!value || weight <= 0) return;
+
+      const metrics = fieldMetrics(queryTokens, value);
+      if (metrics.precision <= 0 && metrics.recall <= 0) return;
+
+      matchedWeight += weight;
+      weightedPrecision += metrics.precision * weight;
+      weightedRecall += metrics.recall * weight;
+      score += ((metrics.fMeasure * 75) + (metrics.precision * 22) + (metrics.recall * 14)) * weight;
+
+      if (metrics.exact) {
+        exact = true;
+        score += 18 * weight;
+        if (topical) topicalBoost += 16;
+      } else if (metrics.prefix) {
+        prefix = true;
+        score += 9 * weight;
+        if (topical) topicalBoost += 7;
+      } else if (metrics.contains) {
+        contains = true;
+        if (topical) topicalBoost += 3;
+      }
+    });
+
+    if (!matchedWeight || (!exact && !prefix && !contains)) {
+      return { score: 0, confidence: 0, matchTier: 'good_match', precision: 0, recall: 0, fMeasure: 0 };
+    }
+
+    const precision = Math.min(1, weightedPrecision / matchedWeight);
+    const recall = Math.min(1, weightedRecall / matchedWeight);
+    const fMeasure = (precision > 0 && recall > 0)
+      ? (2 * precision * recall) / (precision + recall)
+      : 0;
+    const confidence = Math.min(1, (fMeasure * 0.62) + (precision * 0.23) + (recall * 0.15) + (exact ? 0.12 : (prefix ? 0.05 : 0)));
+    const matchTier = (exact && fMeasure >= 0.7)
+      ? 'exact'
+      : (fMeasure >= 0.72 ? 'high_precision' : (fMeasure >= 0.42 ? 'strong_match' : 'good_match'));
+
+    return {
+      score: Number((score + (fMeasure * 100) + (precision * 36) + (recall * 28) + topicalBoost).toFixed(4)),
+      confidence: Number(confidence.toFixed(4)),
+      matchTier,
+      precision: Number(precision.toFixed(4)),
+      recall: Number(recall.toFixed(4)),
+      fMeasure: Number(fMeasure.toFixed(4)),
+    };
   }
 
   function resultKey(item = {}) {
@@ -466,7 +601,6 @@
   }
 
   function buildLocalUserResults(query) {
-    const q = normalizeIdentity(query);
     const users = dedupeUsers([
       window.IBlog?.state?.currentUser || null,
       ...(window.IBlog?.state?.articles || []).map((article) => ({
@@ -483,12 +617,13 @@
 
     return users
       .map((user) => {
-        const confidence = localConfidence(q, [
-          user?.name,
-          user?.email,
-          user?.bio,
+        const metrics = localSearchMetrics(query, [
+          { value: user?.name, weight: 2.4, topic: true },
+          { value: user?.email, weight: 1.2 },
+          { value: user?.bio, weight: 0.45 },
+          { value: user?.plan || 'free', weight: 0.15 },
         ]);
-        if (confidence <= 0) return null;
+        if (metrics.fMeasure <= 0) return null;
 
         const resolved = resolveProfileRecord(user);
         return {
@@ -502,29 +637,30 @@
           cover: user?.cover || resolved.cover,
           bio: user?.bio || resolved.bio,
           initial: user?.initial || resolved.initial,
-          score: Math.round(confidence * 100),
-          confidence,
-          matchTier: confidence >= 0.99 ? 'exact' : confidence >= 0.88 ? 'strong_match' : 'good_match',
+          score: metrics.score,
+          confidence: metrics.confidence,
+          matchTier: metrics.matchTier,
+          precision: metrics.precision,
+          recall: metrics.recall,
+          fMeasure: metrics.fMeasure,
         };
       })
       .filter(Boolean);
   }
 
   function buildLocalArticleResults(query) {
-    const q = normalizeIdentity(query);
     return (window.IBlog?.state?.articles || [])
       .filter((article) => (article?.status || 'published') !== 'draft')
       .map((article) => {
-        const confidence = localConfidence(q, [
-          article?.title,
-          article?.author,
-          article?.cat,
-          article?.category,
-          Array.isArray(article?.tags) ? article.tags.join(' ') : article?.tags,
-          article?.excerpt,
-          article?.body,
+        const metrics = localSearchMetrics(query, [
+          { value: article?.title, weight: 2.6, topic: true },
+          { value: article?.author, weight: 0.9 },
+          { value: article?.cat || article?.category, weight: 1.8, topic: true },
+          { value: Array.isArray(article?.tags) ? article.tags.join(' ') : article?.tags, weight: 1.6, topic: true },
+          { value: article?.excerpt, weight: 0.4 },
+          { value: article?.body, weight: 0.25 },
         ]);
-        if (confidence <= 0) return null;
+        if (metrics.fMeasure <= 0) return null;
 
         return {
           id: article?.id ?? 0,
@@ -540,9 +676,12 @@
           readTime: _readTime(article?.readTime || '5 min'),
           likes: Number(article?.likesCount ?? article?.likes ?? 0),
           views: Number(article?.views || 0),
-          score: Math.round(confidence * 100),
-          confidence,
-          matchTier: confidence >= 0.99 ? 'exact' : confidence >= 0.88 ? 'strong_match' : 'good_match',
+          score: metrics.score,
+          confidence: metrics.confidence,
+          matchTier: metrics.matchTier,
+          precision: metrics.precision,
+          recall: metrics.recall,
+          fMeasure: metrics.fMeasure,
         };
       })
       .filter(Boolean);
@@ -561,50 +700,6 @@
     });
 
     return output;
-  }
-
-  function localConfidence(query, fields = []) {
-    if (!query) return 0;
-    let best = 0;
-
-    fields.forEach((field) => {
-      const value = normalizeIdentity(field);
-      if (!value) return;
-
-      if (value === query) {
-        best = Math.max(best, 1);
-        return;
-      }
-
-      if (value.startsWith(query)) {
-        best = Math.max(best, 0.94);
-      }
-
-      if (value.includes(query)) {
-        best = Math.max(best, 0.86);
-      }
-
-      const words = value.split(/\s+/).filter(Boolean);
-      const queryWords = query.split(/\s+/).filter(Boolean);
-      if (!words.length || !queryWords.length) return;
-
-      let hits = 0;
-      queryWords.forEach((part) => {
-        if (words.some((word) => word === part)) {
-          hits += 1;
-          return;
-        }
-        if (words.some((word) => word.startsWith(part))) {
-          hits += 0.7;
-        }
-      });
-
-      if (hits > 0) {
-        best = Math.max(best, Math.min(0.9, 0.54 + (hits / queryWords.length) * 0.28));
-      }
-    });
-
-    return Number(best.toFixed(4));
   }
 
   window.IBlog = window.IBlog || {};

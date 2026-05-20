@@ -83,77 +83,165 @@ function containsAllTokens(array $tokens, string $haystack): bool
     return $tokens !== [];
 }
 
+function tokenMatchStrength(string $queryToken, string $fieldToken): float
+{
+    $queryToken = lowered($queryToken);
+    $fieldToken = lowered($fieldToken);
+    if ($queryToken === '' || $fieldToken === '') {
+        return 0.0;
+    }
+
+    if ($fieldToken === $queryToken) {
+        return 1.0;
+    }
+
+    if (str_starts_with($fieldToken, $queryToken) || str_starts_with($queryToken, $fieldToken)) {
+        return 0.82;
+    }
+
+    if (str_contains($fieldToken, $queryToken) || str_contains($queryToken, $fieldToken)) {
+        return 0.62;
+    }
+
+    return 0.0;
+}
+
+function retrievalMetricsForField(array $tokens, string $value, string $queryLower = ''): array
+{
+    $fieldTokens = tokenize($value);
+    if ($tokens === [] || $fieldTokens === []) {
+        return [
+            'precision' => 0.0,
+            'recall' => 0.0,
+            'fMeasure' => 0.0,
+            'exact' => false,
+            'prefix' => false,
+            'contains' => false,
+        ];
+    }
+
+    $queryHitTotal = 0.0;
+    foreach ($tokens as $token) {
+        $best = 0.0;
+        foreach ($fieldTokens as $fieldToken) {
+            $best = max($best, tokenMatchStrength($token, $fieldToken));
+            if ($best >= 1.0) {
+                break;
+            }
+        }
+        $queryHitTotal += $best;
+    }
+
+    $fieldHitTotal = 0.0;
+    foreach ($fieldTokens as $fieldToken) {
+        $best = 0.0;
+        foreach ($tokens as $token) {
+            $best = max($best, tokenMatchStrength($token, $fieldToken));
+            if ($best >= 1.0) {
+                break;
+            }
+        }
+        $fieldHitTotal += $best;
+    }
+
+    $precision = $fieldTokens !== [] ? min(1.0, $fieldHitTotal / count($fieldTokens)) : 0.0;
+    $recall = $tokens !== [] ? min(1.0, $queryHitTotal / count($tokens)) : 0.0;
+    $fMeasure = ($precision > 0.0 && $recall > 0.0)
+        ? (2 * $precision * $recall) / ($precision + $recall)
+        : 0.0;
+
+    $lowerValue = lowered($value);
+
+    return [
+        'precision' => round($precision, 6),
+        'recall' => round($recall, 6),
+        'fMeasure' => round($fMeasure, 6),
+        'exact' => $queryLower !== '' && ($lowerValue === $queryLower || in_array($queryLower, $fieldTokens, true)),
+        'prefix' => $queryLower !== '' && (
+            str_starts_with($lowerValue, $queryLower)
+            || array_reduce($fieldTokens, static fn(bool $carry, string $token): bool => $carry || str_starts_with($token, $queryLower), false)
+        ),
+        'contains' => $queryLower !== '' && str_contains($lowerValue, $queryLower),
+    ];
+}
+
 function scoreTextMatch(string $query, array $tokens, array $fields, float $engagementBoost = 0.0): array
 {
     $queryLower = lowered($query);
     $score = 0.0;
-    $confidence = 0.0;
+    $weightedPrecision = 0.0;
+    $weightedRecall = 0.0;
+    $matchedWeight = 0.0;
     $exact = false;
     $prefix = false;
     $contains = false;
+    $topicalBoost = 0.0;
 
-    foreach ($fields as $field => $weight) {
+    foreach ($fields as $field => $config) {
+        $weight = is_array($config) ? (float) ($config['weight'] ?? 1.0) : (float) $config;
+        $isTopical = is_array($config) ? !empty($config['topic']) : false;
         $value = trim((string) $field);
         if ($value === '' || $weight <= 0) {
             continue;
         }
 
-        $lower = lowered($value);
-        if ($lower === $queryLower && $queryLower !== '') {
-            $score += 100 * $weight;
-            $confidence = max($confidence, 1.0);
-            $exact = true;
+        $metrics = retrievalMetricsForField($tokens, $value, $queryLower);
+        if (($metrics['precision'] ?? 0) <= 0 && ($metrics['recall'] ?? 0) <= 0) {
             continue;
         }
 
-        if ($queryLower !== '' && str_starts_with($lower, $queryLower)) {
-            $score += 60 * $weight;
-            $confidence = max($confidence, 0.96);
+        $matchedWeight += $weight;
+        $weightedPrecision += (float) $metrics['precision'] * $weight;
+        $weightedRecall += (float) $metrics['recall'] * $weight;
+        $score += (
+            ((float) $metrics['fMeasure'] * 75)
+            + ((float) $metrics['precision'] * 22)
+            + ((float) $metrics['recall'] * 14)
+        ) * $weight;
+
+        if (!empty($metrics['exact'])) {
+            $exact = true;
+            $score += 18 * $weight;
+            if ($isTopical) {
+                $topicalBoost += 16;
+            }
+        } elseif (!empty($metrics['prefix'])) {
             $prefix = true;
-        }
-
-        if ($queryLower !== '' && str_contains($lower, $queryLower)) {
-            $score += 34 * $weight;
-            $confidence = max($confidence, 0.88);
+            $score += 9 * $weight;
+            if ($isTopical) {
+                $topicalBoost += 7;
+            }
+        } elseif (!empty($metrics['contains'])) {
             $contains = true;
-        }
-
-        if ($tokens !== []) {
-            $fieldTokens = tokenize($value);
-            $hits = 0;
-            foreach ($tokens as $token) {
-                foreach ($fieldTokens as $fieldToken) {
-                    if ($fieldToken === $token) {
-                        $hits++;
-                        break;
-                    }
-                    if (str_starts_with($fieldToken, $token)) {
-                        $hits += 0.7;
-                        break;
-                    }
-                }
-            }
-
-            if ($hits > 0) {
-                $coverage = min(1.0, $hits / max(count($tokens), 1));
-                $score += (24 * $weight) * $coverage;
-                $confidence = max($confidence, 0.58 + ($coverage * 0.28));
+            if ($isTopical) {
+                $topicalBoost += 3;
             }
         }
     }
 
-    if (!$exact && !$prefix && !$contains && !containsAllTokens($tokens, implode(' ', array_keys($fields)))) {
-        return ['score' => 0.0, 'confidence' => 0.0, 'matchTier' => 'good_match'];
+    if ($matchedWeight <= 0 || (!$exact && !$prefix && !$contains && !containsAllTokens($tokens, implode(' ', array_keys($fields))))) {
+        return ['score' => 0.0, 'confidence' => 0.0, 'matchTier' => 'good_match', 'precision' => 0.0, 'recall' => 0.0, 'fMeasure' => 0.0];
     }
 
-    $score += $engagementBoost;
-    $confidence = min(1.0, $confidence + min(0.08, $engagementBoost / 20));
-    $matchTier = $exact ? 'exact' : ($confidence >= 0.92 ? 'high_precision' : ($confidence >= 0.8 ? 'strong_match' : 'good_match'));
+    $precision = min(1.0, $weightedPrecision / $matchedWeight);
+    $recall = min(1.0, $weightedRecall / $matchedWeight);
+    $fMeasure = ($precision > 0.0 && $recall > 0.0)
+        ? (2 * $precision * $recall) / ($precision + $recall)
+        : 0.0;
+
+    $score += ($fMeasure * 100) + ($precision * 36) + ($recall * 28) + $topicalBoost + $engagementBoost;
+    $confidence = min(1.0, ($fMeasure * 0.62) + ($precision * 0.23) + ($recall * 0.15) + ($exact ? 0.12 : ($prefix ? 0.05 : 0.0)));
+    $matchTier = ($exact && $fMeasure >= 0.7)
+        ? 'exact'
+        : ($fMeasure >= 0.72 ? 'high_precision' : ($fMeasure >= 0.42 ? 'strong_match' : 'good_match'));
 
     return [
         'score' => round($score, 6),
         'confidence' => round($confidence, 4),
         'matchTier' => $matchTier,
+        'precision' => round($precision, 4),
+        'recall' => round($recall, 4),
+        'fMeasure' => round($fMeasure, 4),
     ];
 }
 
@@ -232,11 +320,11 @@ function loadArticleMatches(PDO $cnx, string $query, array $tokens, int $limit):
     foreach ($rows as $row) {
         $engagementBoost = min(8.0, log(1 + max(0, (int) ($row['views'] ?? 0)) + max(0, (int) ($row['likesCount'] ?? 0))));
         $match = scoreTextMatch($query, $tokens, [
-            (string) ($row['title'] ?? '') => 2.2,
-            (string) ($row['author'] ?? '') => 1.1,
-            (string) ($row['category'] ?? '') => 0.8,
-            (string) ($row['tags'] ?? '') => 1.0,
-            (string) ($row['body'] ?? '') => 0.3,
+            (string) ($row['title'] ?? '') => ['weight' => 2.6, 'topic' => true],
+            (string) ($row['author'] ?? '') => ['weight' => 0.9],
+            (string) ($row['category'] ?? '') => ['weight' => 1.8, 'topic' => true],
+            (string) ($row['tags'] ?? '') => ['weight' => 1.6, 'topic' => true],
+            (string) ($row['body'] ?? '') => ['weight' => 0.25],
         ], $engagementBoost);
 
         if (($match['score'] ?? 0) <= 0) {
@@ -259,6 +347,9 @@ function loadArticleMatches(PDO $cnx, string $query, array $tokens, int $limit):
             'score' => $match['score'],
             'confidence' => $match['confidence'],
             'matchTier' => $match['matchTier'],
+            'precision' => $match['precision'],
+            'recall' => $match['recall'],
+            'fMeasure' => $match['fMeasure'],
         ];
     }
 
@@ -318,10 +409,10 @@ function loadUserMatches(PDO $cnx, string $query, array $tokens, int $limit): ar
     $results = [];
     foreach ($rows as $row) {
         $match = scoreTextMatch($query, $tokens, [
-            (string) ($row['name'] ?? '') => 2.4,
-            (string) ($row['email'] ?? '') => 1.2,
-            (string) ($row['bio'] ?? '') => 0.45,
-            (string) ($row['plan'] ?? 'free') => 0.15,
+            (string) ($row['name'] ?? '') => ['weight' => 2.4, 'topic' => true],
+            (string) ($row['email'] ?? '') => ['weight' => 1.2],
+            (string) ($row['bio'] ?? '') => ['weight' => 0.45],
+            (string) ($row['plan'] ?? 'free') => ['weight' => 0.15],
         ]);
 
         if (($match['score'] ?? 0) <= 0) {
@@ -343,6 +434,9 @@ function loadUserMatches(PDO $cnx, string $query, array $tokens, int $limit): ar
             'score' => $match['score'],
             'confidence' => $match['confidence'],
             'matchTier' => $match['matchTier'],
+            'precision' => $match['precision'],
+            'recall' => $match['recall'],
+            'fMeasure' => $match['fMeasure'],
         ];
     }
 
@@ -382,6 +476,21 @@ try {
 
     $combined = array_merge($articles, $users);
     usort($combined, static function (array $a, array $b): int {
+        $fMeasureDiff = ($b['fMeasure'] ?? 0) <=> ($a['fMeasure'] ?? 0);
+        if ($fMeasureDiff !== 0) {
+            return $fMeasureDiff;
+        }
+
+        $precisionDiff = ($b['precision'] ?? 0) <=> ($a['precision'] ?? 0);
+        if ($precisionDiff !== 0) {
+            return $precisionDiff;
+        }
+
+        $recallDiff = ($b['recall'] ?? 0) <=> ($a['recall'] ?? 0);
+        if ($recallDiff !== 0) {
+            return $recallDiff;
+        }
+
         $confidenceDiff = ($b['confidence'] ?? 0) <=> ($a['confidence'] ?? 0);
         if ($confidenceDiff !== 0) {
             return $confidenceDiff;
@@ -411,6 +520,9 @@ try {
             'score' => (float) ($item['score'] ?? 0),
             'confidence' => (float) ($item['confidence'] ?? 0),
             'matchTier' => (string) ($item['matchTier'] ?? 'good_match'),
+            'precision' => (float) ($item['precision'] ?? 0),
+            'recall' => (float) ($item['recall'] ?? 0),
+            'fMeasure' => (float) ($item['fMeasure'] ?? 0),
         ];
 
         unset($item['score'], $item['confidence'], $item['matchTier']);

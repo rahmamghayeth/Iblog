@@ -282,32 +282,44 @@ IBlog.Analytics = (() => {
     const locale = IBlog.I18n?.meta?.().locale || 'en-US';
     const weekdayFormatter = new Intl.DateTimeFormat(locale, { weekday: 'short' });
     const monthFormatter = new Intl.DateTimeFormat(locale, { month: 'short' });
+    const parseDate = (value) => {
+      const date = new Date(value);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    };
+    const formatKey = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    const addDays = (date, amount) => {
+      const next = new Date(date);
+      next.setDate(next.getDate() + amount);
+      return next;
+    };
+    const dayMap = new Map(days.map((day) => [String(day.date), day]));
+    const sortedDays = [...days].sort((a, b) => parseDate(a.date) - parseDate(b.date));
+    const today = parseDate(new Date());
+    const lastActivityDate = parseDate(sortedDays[sortedDays.length - 1].date);
+    const displayEnd = lastActivityDate > today ? lastActivityDate : today;
+    const displayStart = addDays(displayEnd, -364);
+    const startOffset = (displayStart.getDay() + 6) % 7;
+    const rangeStart = addDays(displayStart, -startOffset);
+    const endOffset = 6 - ((displayEnd.getDay() + 6) % 7);
+    const rangeEnd = addDays(displayEnd, endOffset);
+    const orderedWeeks = [];
 
-    const weeks = [];
-    for (let i = 0; i < 53; i++) weeks.push([]);
-    days.forEach((day, index) => {
-      const weekIdx = Math.floor(index / 7);
-      if (weeks[weekIdx]) weeks[weekIdx].push(day);
-    });
-    const visibleWeeks = weeks.filter((week) => week.length > 0);
-    const latestDate = new Date(days[days.length - 1].date);
-    const currentMonthKey = `${latestDate.getFullYear()}-${latestDate.getMonth()}`;
-    let currentMonthStartWeek = 0;
-
-    for (let i = visibleWeeks.length - 1; i >= 0; i -= 1) {
-      const isCurrentMonthWeek = visibleWeeks[i].some((day) => {
-        const date = new Date(day.date);
-        return `${date.getFullYear()}-${date.getMonth()}` === currentMonthKey;
-      });
-
-      if (isCurrentMonthWeek) {
-        currentMonthStartWeek = i;
-      } else if (currentMonthStartWeek !== 0) {
-        break;
+    for (let cursor = new Date(rangeStart); cursor <= rangeEnd; cursor = addDays(cursor, 7)) {
+      const week = [];
+      for (let offset = 0; offset < 7; offset += 1) {
+        const currentDate = addDays(cursor, offset);
+        const key = formatKey(currentDate);
+        const existingDay = dayMap.get(key);
+        week.push(existingDay || { date: key, count: 0, _isPadding: currentDate < displayStart || currentDate > displayEnd });
       }
+      orderedWeeks.push(week);
     }
-
-    const orderedWeeks = visibleWeeks.slice(currentMonthStartWeek).concat(visibleWeeks.slice(0, currentMonthStartWeek));
 
     container.innerHTML = `
       <div class="an-heatmap-wrap">
@@ -325,24 +337,24 @@ IBlog.Analytics = (() => {
                 const count = Number(day.count || 0);
                 const level = count === 0 ? 0 : count === 1 ? 1 : count <= 3 ? 2 : count <= 6 ? 3 : 4;
                 const label = new Date(day.date).toLocaleDateString(locale, { month: 'short', day: 'numeric' });
-                return `<div class="an-heatmap-cell is-${level}" title="${_escapeHTML(_t('analytics.activityCount', { date: label, count: _formatNumber(count) }))}"></div>`;
+                return `<div class="an-heatmap-cell is-${level}${day._isPadding ? ' is-padding' : ''}" title="${_escapeHTML(_t('analytics.activityCount', { date: label, count: _formatNumber(count) }))}"></div>`;
               }).join('')}
             </div>`).join('')}
         </div>
       </div>`;
 
-    let lastMonth = '';
-    const months = [];
+    const monthEntries = new Map();
     orderedWeeks.forEach((week, index) => {
-      const pivotDay = week[0];
-      if (!pivotDay) return;
-
-      const month = monthFormatter.format(new Date(pivotDay.date));
-      if (month !== lastMonth) {
-        months.push({ weekIdx: index, label: month });
-        lastMonth = month;
-      }
+      week.forEach((day) => {
+        if (day._isPadding) return;
+        const date = parseDate(day.date);
+        const key = `${date.getFullYear()}-${date.getMonth()}`;
+        if (!monthEntries.has(key)) {
+          monthEntries.set(key, { weekIdx: index, label: monthFormatter.format(date), date });
+        }
+      });
     });
+    const months = Array.from(monthEntries.values()).sort((a, b) => a.date - b.date);
 
     if (monthsEl) {
       monthsEl.innerHTML = months.map((month, index) => {

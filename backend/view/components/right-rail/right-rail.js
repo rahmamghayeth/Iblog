@@ -55,7 +55,12 @@ function _authorMatches(source = {}, author = {}) {
   }
   const sourceEmail = _normalizeIdentity(source?.email || source?.authorEmail);
   const authorEmail = _normalizeIdentity(author?.email || author?.authorEmail);
-  return !!(sourceEmail && authorEmail && sourceEmail === authorEmail);
+  if (sourceEmail && authorEmail && sourceEmail === authorEmail) {
+    return true;
+  }
+  const sourceName = _normalizeIdentity(source?.name || source?.author || source?.pseudo);
+  const authorName = _normalizeIdentity(author?.name || author?.author || author?.pseudo);
+  return !!(sourceName && authorName && sourceName === authorName);
 }
 
 function _resolveAuthorProfile(author = {}) {
@@ -72,6 +77,17 @@ function _resolveAuthorProfile(author = {}) {
     bio       = bio    || String(current?.bio    || '').trim();
     plan      = String(current?.plan || plan || 'free');
     isPremium = isPremium || current?.plan === 'premium' || !!current?.isPremium;
+  }
+
+  const viewedProfile = window.IBlog?.state?.profileView?.mode === 'user'
+    ? window.IBlog.state.profileView.user
+    : null;
+  if (_authorMatches(viewedProfile, author)) {
+    avatar    = avatar || String(viewedProfile?.avatar || '').trim();
+    cover     = cover  || String(viewedProfile?.cover || '').trim();
+    bio       = bio    || String(viewedProfile?.bio || '').trim();
+    plan      = String(viewedProfile?.plan || plan || 'free');
+    isPremium = isPremium || viewedProfile?.plan === 'premium' || !!viewedProfile?.isPremium;
   }
 
   const articleMatch = (window.IBlog?.state?.articles || []).find(

@@ -127,6 +127,82 @@ IBlog.Views = (() => {
     setTimeout(() => IBlog.Feed?.openReader?.(article), 180);
   }
 
+  function _resolveMapArticleImage(country, article, existing, index, topics = []) {
+    const directImage = article?.cover || article?.img || existing?.cover || existing?.img;
+    if (directImage) return directImage;
+
+    const topic = String(topics[index % (topics.length || 1)] || '').toLowerCase();
+    const countryKey = String(country || '').toLowerCase();
+    const countryImages = {
+      world: [
+        'https://images.unsplash.com/photo-1521295121783-8a321d551ad2?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
+      ],
+      usa: [
+        'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80',
+      ],
+      tunisia: [
+        'https://images.unsplash.com/photo-1539650116574-75c0c6d73f0e?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1524499982521-1ffd58dd89ea?auto=format&fit=crop&w=1200&q=80',
+      ],
+      japan: [
+        'https://images.unsplash.com/photo-1542051841857-5f90071e7989?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&w=1200&q=80',
+      ],
+      uae: [
+        'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1518684079-3c830dcef090?auto=format&fit=crop&w=1200&q=80',
+      ],
+    };
+    const topicImages = {
+      ai: [
+        'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1200&q=80',
+      ],
+      startups: [
+        'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80',
+      ],
+      design: [
+        'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=1200&q=80',
+      ],
+      travel: [
+        'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1488085061387-422e29b40080?auto=format&fit=crop&w=1200&q=80',
+      ],
+      culture: [
+        'https://images.unsplash.com/photo-1518998053901-5348d3961a04?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1200&q=80',
+      ],
+      finance: [
+        'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1200&q=80',
+      ],
+      science: [
+        'https://images.unsplash.com/photo-1532187863486-abf9dbad1b69?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1507413245164-6160d8298b31?auto=format&fit=crop&w=1200&q=80',
+      ],
+      education: [
+        'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&q=80',
+      ],
+      default: [
+        'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
+        'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80',
+      ],
+    };
+
+    const countrySet = countryImages[countryKey];
+    if (countrySet?.length) return countrySet[index % countrySet.length];
+
+    const topicSet = topicImages[topic] || topicImages.default;
+    return topicSet[index % topicSet.length];
+  }
+
   function _buildCountryFeed(country) {
     const data = IBlog.COUNTRY_DATA[country] || IBlog.COUNTRY_DATA['World'];
     const title = document.getElementById('country-title');
@@ -173,26 +249,112 @@ IBlog.Views = (() => {
 <div class="country-articles">${articlesHTML}</div>`;
   }
 
+  function _buildCountryFeed(country) {
+    const data = IBlog.COUNTRY_DATA[country] || IBlog.COUNTRY_DATA.World;
+    const title = document.getElementById('country-title');
+    if (title) {
+      title.innerHTML = `<span class="country-title-flag">${data.flag}</span><em>${country}</em><span class="country-title-copy">Trending Now</span>`;
+    }
+
+    const topicsHTML = data.topics
+      .map((topic) => `<span class="topic-chip" onclick="IBlog.Views.searchTopic('${topic}')">${topic}</span>`)
+      .join('');
+
+    const renderArticleCard = (article, index) => {
+      const existing = IBlog.state.articles.find((item) =>
+        item.title === article.title || item.title.startsWith(article.title.substring(0, 40))
+      );
+      const tones = ['#f0c8c2', '#d9e3b1', '#b8ddd3', '#cfd8f8', '#edd3a7'];
+      const imageUrl = _resolveMapArticleImage(country, article, existing, index, data.topics);
+      const imageStyle = imageUrl
+        ? `background-image:url('${imageUrl}')`
+        : `--card-tint:${tones[index % tones.length]}`;
+      const safeCountry = country.replace(/\s/g, '_');
+      const cardClass = 'country-article-card is-horizontal';
+      const articleCopy = article.excerpt || `A focused read from the ${country} feed.`;
+      const content = `
+  <div class="country-article-img" style="${imageStyle}"></div>
+  <div class="country-article-info">
+    <div class="country-article-rank">#${index + 1} Trending</div>
+    <div class="country-article-title">${article.title}</div>
+    <div class="country-article-excerpt">${articleCopy}</div>
+    <div class="country-article-meta">
+      <span>By ${article.author}</span>
+      <span class="country-article-meta-sep"></span>
+      <span>${article.readTime}</span>
+    </div>
+  </div>`;
+
+      if (existing) {
+        return `
+<div class="${cardClass}" onclick="IBlog.Feed.openReader(${existing.id})">
+  ${content}
+</div>`;
+      }
+
+      const tempId = `map_${index}_${safeCountry}`;
+      return `
+<div class="${cardClass}" onclick="IBlog.Views.openMapArticle('${tempId}', '${country}', ${index})">
+  ${content}
+</div>`;
+    };
+
+    const articlesHTML = data.articles
+      .map((article, index) => renderArticleCard(article, index))
+      .join('');
+    const articleCount = data.articles.length;
+
+    const el = document.getElementById('country-articles');
+    if (!el) return;
+
+    el.innerHTML = `
+<div class="country-feed-summary">
+  <div class="country-feed-summary-copy">
+    <strong>${data.summary}</strong>
+    <span>${articleCount} curated stor${articleCount > 1 ? 'ies' : 'y'} for ${country}.</span>
+  </div>
+  <div class="country-feed-summary-badge">Live global feed</div>
+</div>
+<div class="country-topic-chips">${topicsHTML}</div>
+<div class="country-articles">${articlesHTML}</div>`;
+  }
+
   function openMapArticle(id, title, author, readTime, img, country) {
+    let sourceArticle = null;
+    if (arguments.length <= 3 || country === undefined) {
+      const sourceCountry = title;
+      const sourceIndex = Number(author);
+      const data = IBlog.COUNTRY_DATA[sourceCountry] || IBlog.COUNTRY_DATA.World;
+      sourceArticle = data?.articles?.[sourceIndex] || null;
+      country = sourceCountry;
+      title = sourceArticle?.title || 'Untitled';
+      author = sourceArticle?.author || 'IBlog Editorial';
+      readTime = sourceArticle?.readTime || '5 min';
+      img = sourceArticle?.img || sourceArticle?.cover || '';
+    }
     const tempArticle = {
       id: id,
       title: title,
       author: author,
       authorInitial: author ? author[0].toUpperCase() : '?',
       authorColor: 'var(--accent)',
-      cat: country,
+      cat: sourceArticle?.category || country,
+      category: sourceArticle?.category || country,
       img: img || null,
+      cover: img || null,
       readTime: readTime,
       excerpt: `A trending article from ${country} — one of the most-read pieces in this region right now.`,
       body: `This is a trending article from ${country}.\n\n"${title}" by ${author} is currently one of the most-read pieces in the region. This article has been identified as a top trend through IBlog's global reading pattern analysis.\n\nExplore more content from ${country} by clicking the topic chips above, or navigate to the Smart Search to find related articles in our full library.`,
       likes: Math.floor(Math.random() * 300 + 50),
+      excerpt: sourceArticle?.excerpt || `A trending article from ${country}.`,
+      body: sourceArticle?.body || `This is a trending article from ${country}.\n\n"${title}" by ${author} is currently one of the most-read pieces in the region.`,
       comments: [],
       reposts: Math.floor(Math.random() * 60 + 10),
       bookmarked: false,
       liked: false,
       quality: 'high',
       isPremiumAuthor: false,
-      tags: [country, 'Trending', 'Global'],
+      tags: Array.isArray(sourceArticle?.tags) && sourceArticle.tags.length ? sourceArticle.tags : [country, 'Trending', 'Global'],
       date: 'Trending now',
     };
 

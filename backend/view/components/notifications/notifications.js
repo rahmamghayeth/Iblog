@@ -2,8 +2,50 @@ IBlog.Notifications = {
   STORAGE_KEY: 'iblog_notifications',
 
   data: [
-    { id: 1, read: false, type: 'like', text: '<strong>IBlog</strong>: Welcome back.', time: 'Just now' },
+    { id: 1, read: false, type: 'info', messageKey: 'notifications.welcomeBack', timeKey: 'notifications.justNow' },
   ],
+
+  _t(key, vars = {}) {
+    return IBlog.I18n?.t?.(key, vars) || key;
+  },
+
+  _escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  },
+
+  _normalize(notification = {}) {
+    if (!notification || typeof notification !== 'object') return null;
+    return {
+      id: notification.id || Date.now(),
+      read: !!notification.read,
+      type: notification.type || 'info',
+      text: notification.text || '',
+      time: notification.time || '',
+      messageKey: notification.messageKey || '',
+      messageVars: notification.messageVars && typeof notification.messageVars === 'object' ? notification.messageVars : {},
+      timeKey: notification.timeKey || '',
+    };
+  },
+
+  _renderMessage(notification) {
+    if (notification.messageKey) {
+      const safeVars = Object.fromEntries(
+        Object.entries(notification.messageVars || {}).map(([key, value]) => [key, this._escapeHtml(value)])
+      );
+      return this._t(notification.messageKey, safeVars);
+    }
+    return notification.text || '';
+  },
+
+  _renderTime(notification) {
+    if (notification.timeKey) return this._t(notification.timeKey);
+    return notification.time || this._t('notifications.justNow');
+  },
 
   init() {
     this.load();
@@ -15,7 +57,7 @@ IBlog.Notifications = {
     try {
       const saved = JSON.parse(localStorage.getItem(this.STORAGE_KEY) || '[]');
       if (Array.isArray(saved) && saved.length) {
-        this.data = saved;
+        this.data = saved.map((notification) => this._normalize(notification)).filter(Boolean);
       }
     } catch (_) {}
   },
@@ -34,17 +76,17 @@ IBlog.Notifications = {
       list.innerHTML = `
         <div style="text-align:center;padding:40px;color:var(--text2)">
           <div style="font-size:36px;margin-bottom:12px">Bell</div>
-          <p>No notifications yet</p>
+          <p>${this._t('notifications.empty')}</p>
         </div>`;
       return;
     }
 
     list.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <strong style="font-size:14px">${this.unreadCount()} unread</strong>
+        <strong style="font-size:14px">${this._t('notifications.unread', { count: this.unreadCount() })}</strong>
         <button onclick="IBlog.Notifications.markAllRead()"
                 style="font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif">
-          Mark all as read
+          ${this._t('notifications.markAllRead')}
         </button>
       </div>
       ${this.data.map((notification) => `
@@ -53,8 +95,8 @@ IBlog.Notifications = {
              style="cursor:pointer">
           <div class="notif-dot ${notification.read ? 'read' : ''}"></div>
           <div style="flex:1">
-            <div class="notif-text">${notification.text}</div>
-            <div class="notif-time">${notification.time}</div>
+            <div class="notif-text">${this._renderMessage(notification)}</div>
+            <div class="notif-time">${this._renderTime(notification)}</div>
           </div>
           ${!notification.read ? '<div style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0"></div>' : ''}
         </div>
@@ -90,12 +132,21 @@ IBlog.Notifications = {
     });
     this.render();
     this.updateBadge();
-    IBlog.utils?.toast?.('All notifications marked as read', 'success');
+    IBlog.utils?.toast?.(this._t('notifications.allReadToast'), 'success');
   },
 
-  push(text, type = 'info') {
-    const id = Date.now();
-    this.data.unshift({ id, read: false, type, text, time: 'Just now' });
+  push(payload, type = 'info') {
+    const normalized = typeof payload === 'string'
+      ? this._normalize({ id: Date.now(), read: false, type, text: payload, timeKey: 'notifications.justNow' })
+      : this._normalize({
+          id: Date.now(),
+          read: false,
+          type,
+          ...payload,
+          timeKey: payload?.timeKey || 'notifications.justNow',
+        });
+    if (!normalized) return;
+    this.data.unshift(normalized);
     this.render();
     this.updateBadge();
   },

@@ -90,6 +90,8 @@ window.IBlogSession = (() => {
     const nextScope = _scope(normalizedUser);
     const prevScope = localStorage.getItem(ACTIVE_KEY) || '';
 
+    sessionStorage.removeItem(PENDING_KEY);
+    localStorage.removeItem(PENDING_KEY);
     sessionStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
     localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
     localStorage.setItem(ACTIVE_KEY, nextScope);
@@ -100,6 +102,30 @@ window.IBlogSession = (() => {
       IBlog.state.currentUser = normalizedUser;
     }
 
+    _broadcastSessionChange(normalizedUser, previousUser);
+
+    return normalizedUser;
+  }
+
+  function replaceUser(user) {
+    if (!_valid(user)) {
+      clearUser();
+      return null;
+    }
+
+    const previousUser = getUser();
+    const normalizedUser = {
+      ...user,
+      initial: user.initial || (user.name ? user.name[0].toUpperCase() : 'A'),
+    };
+    const nextScope = _scope(normalizedUser);
+
+    sessionStorage.removeItem(PENDING_KEY);
+    localStorage.removeItem(PENDING_KEY);
+    sessionStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+    localStorage.setItem(USER_KEY, JSON.stringify(normalizedUser));
+    localStorage.setItem(ACTIVE_KEY, nextScope);
+    _resetRuntimeState(normalizedUser);
     _broadcastSessionChange(normalizedUser, previousUser);
 
     return normalizedUser;
@@ -175,6 +201,7 @@ window.IBlogSession = (() => {
     syncFromServer,
     scopedKey,
     switchToPersistedUser,
+    replaceUser,
     isValidUser: _valid,
   };
 })();

@@ -473,6 +473,7 @@ IBlog.Profile = (() => {
       mode: 'user',
       user: localTarget,
     };
+    window.RightRail?.refreshAuthors?.();
     IBlog.Dashboard?.navigateTo?.('profile');
 
     _fetchPublicUser(target).then((fetchedUser) => {
@@ -482,6 +483,7 @@ IBlog.Profile = (() => {
       const activeId = activeView.user?.id ?? activeView.id ?? null;
       if (activeId !== null && String(activeId) !== String(fetchedUser.id ?? '')) return;
       _mergeViewedUser(fetchedUser);
+      window.RightRail?.refreshAuthors?.();
       renderCurrentView();
     });
   }

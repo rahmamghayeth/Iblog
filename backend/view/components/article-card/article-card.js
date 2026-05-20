@@ -376,12 +376,12 @@ IBlog.ArticleCard = {
     btn.classList.add('shake');
     setTimeout(()=>btn.classList.remove('shake'),400);
     IBlog.Profile?.renderCurrentView?.();
-    IBlog.Notifications?.push?.(
-      article._reposted
-        ? `You shared <strong>${this._esc(article.title || 'this article')}</strong>.`
-        : `You removed the share for <strong>${this._esc(article.title || 'this article')}</strong>.`,
-      'share'
-    );
+    if (article._reposted) {
+      IBlog.Notifications?.push?.({
+        messageKey: 'notifications.sharedArticle',
+        messageVars: { title: String(article.title || 'this article') },
+      }, 'share');
+    }
     IBlog.utils.toast(article._reposted ? this._t('actions.repost') : this._t('actions.repost'));
   },
 
@@ -402,7 +402,10 @@ IBlog.ArticleCard = {
     if(platform==='twitter') window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`,'_blank');
     else if(platform==='linkedin') window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,'_blank');
     else navigator.clipboard.writeText(url).then(()=>IBlog.utils.toast(this._t('actions.share'),'success'));
-    IBlog.Notifications?.push?.(`You shared <strong>${this._esc(title)}</strong>.`, 'share');
+    IBlog.Notifications?.push?.({
+      messageKey: 'notifications.sharedArticle',
+      messageVars: { title: String(title) },
+    }, 'share');
   },
 
   /* ── Podcast card toggle ─────────────────────────────── */
@@ -487,7 +490,10 @@ IBlog.ArticleCard = {
     window.RightRail?.refreshStats?.();
     IBlog.Analytics?.init?.();
     IBlog.Activity?.init?.();
-    IBlog.Notifications?.push?.(`New comment on <strong>${this._esc(article.title || 'your article')}</strong>.`, 'comment');
+    IBlog.Notifications?.push?.({
+      messageKey: 'notifications.commentedArticle',
+      messageVars: { title: String(article.title || 'your article') },
+    }, 'comment');
     IBlog.utils.toast(this._t('actions.comment'),'success');
   },
 

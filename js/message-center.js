@@ -7,6 +7,7 @@
   let _threadsCache = [];
   let _searchTimer = null;
   let _conversationPartnerIds = new Set();
+  const _t = (key, vars = {}) => IBlog.I18n?.t?.(key, vars) || key;
 
   function _resetRuntime() {
     _activePartner = null;
@@ -53,8 +54,8 @@
 
     if (lower.includes('not authenticated')) {
       return surface === 'people'
-        ? 'Sign in to browse people.'
-        : 'Sign in to open your inbox.';
+        ? _t('messages.browsePeopleFirst')
+        : _t('messages.openInboxFirst');
     }
 
     if (
@@ -63,13 +64,13 @@
       || lower.includes('unknown database')
     ) {
       return surface === 'people'
-        ? 'People search is waiting for the database connection.'
+        ? _t('messages.dbWaitingPeople')
         : surface === 'threads'
-          ? 'Your inbox will appear once the database connection is ready.'
-          : 'Messages are temporarily unavailable until the database is connected.';
+          ? _t('messages.dbWaitingInbox')
+          : _t('messages.dbWaitingMessages');
     }
 
-    return raw || 'Something went wrong while loading messages.';
+    return raw || _t('messages.genericError');
   }
 
   function _formatThreadDate(value) {
@@ -99,12 +100,12 @@
 
     const text = await response.text();
     if (!text.trim().startsWith('{')) {
-      throw new Error('Invalid server response');
+      throw new Error(_t('messages.invalidServerResponse'));
     }
 
     const data = JSON.parse(text);
     if (!response.ok || !data.ok) {
-      throw new Error(data.error || 'Request failed');
+      throw new Error(data.error || _t('messages.requestFailed'));
     }
 
     return data;
@@ -124,24 +125,24 @@
         <div class="dm-sidebar">
           <div class="dm-sidebar-head">
             <div>
-              <div class="dm-kicker">Private messaging</div>
-              <h2>Inbox</h2>
-              <p class="dm-sidebar-copy">Keep conversations focused, fast, and easy to scan.</p>
+              <div class="dm-kicker">${_t('messages.privateMessaging')}</div>
+              <h2>${_t('messages.inbox')}</h2>
+              <p class="dm-sidebar-copy">${_t('messages.sidebarCopy')}</p>
             </div>
             <span class="dm-badge" id="dm-thread-count">0</span>
           </div>
 
           <div class="dm-search">
-            <input id="dm-user-search" type="text" placeholder="Search people or conversations..." autocomplete="off" />
+            <input id="dm-user-search" type="text" placeholder="${_t('messages.searchPlaceholder')}" autocomplete="off" />
           </div>
 
           <div class="dm-section dm-section-card">
-            <div class="dm-section-title">Conversations</div>
+            <div class="dm-section-title">${_t('messages.conversations')}</div>
             <div id="dm-thread-list" class="dm-list"></div>
           </div>
 
           <div class="dm-section dm-section-card">
-            <div class="dm-section-title">Conversation people</div>
+            <div class="dm-section-title">${_t('messages.conversationPeople')}</div>
             <div id="dm-user-list" class="dm-list"></div>
           </div>
         </div>
@@ -149,25 +150,25 @@
         <div class="dm-panel">
           <div class="dm-panel-header" id="dm-panel-header">
             <div>
-              <strong>Select a conversation</strong>
-              <span>Choose someone from the inbox or the conversation people list to begin.</span>
+              <strong>${_t('messages.selectConversation')}</strong>
+              <span>${_t('messages.selectConversationBody')}</span>
             </div>
           </div>
 
           <div class="dm-messages" id="dm-messages">
             <div class="dm-empty">
               <div class="dm-empty-icon">DM</div>
-              <strong>Start a direct message</strong>
-              <p>Use the conversation people list to begin a private conversation and keep the thread in one place.</p>
+              <strong>${_t('messages.startDirectMessage')}</strong>
+              <p>${_t('messages.startDirectMessageBody')}</p>
             </div>
           </div>
 
           <div class="dm-compose">
             <div class="dm-compose-field">
-              <textarea id="dm-compose-input" placeholder="Pick a conversation to write a message..." rows="2"></textarea>
-              <small>Press Ctrl + Enter to send quickly.</small>
+              <textarea id="dm-compose-input" placeholder="${_t('messages.pickConversationPlaceholder')}" rows="2"></textarea>
+              <small>${_t('messages.sendShortcut')}</small>
             </div>
-            <button class="btn btn-primary dm-send-btn" id="dm-send-btn" type="button" onclick="IBlog.MessageCenter.sendMessage()" disabled>Send</button>
+            <button class="btn btn-primary dm-send-btn" id="dm-send-btn" type="button" onclick="IBlog.MessageCenter.sendMessage()" disabled>${_t('messages.send')}</button>
           </div>
         </div>
       </div>`;
@@ -176,13 +177,13 @@
   function _threadCard(thread) {
     const partner = thread.partner || {};
     const last = String(thread.lastMessage || '').trim();
-    const snippet = last.length > 88 ? `${last.slice(0, 85)}...` : last || 'No messages yet';
+    const snippet = last.length > 88 ? `${last.slice(0, 85)}...` : last || _t('messages.noMessagesSnippet');
     return `
       <button class="dm-thread${_activePartner?.id === partner.id ? ' active' : ''}" type="button"
         onclick="IBlog.MessageCenter.openConversation(JSON.parse(decodeURIComponent('${_payload(partner)}')))">
         ${_avatarMarkup(partner, 42)}
         <div class="dm-thread-copy">
-          <strong>${_escapeHtml(partner.name || 'Unknown')}</strong>
+          <strong>${_escapeHtml(partner.name || _t('messages.unknown'))}</strong>
           <span>${_escapeHtml(snippet)}</span>
         </div>
         <div class="dm-thread-meta">
@@ -193,15 +194,15 @@
   }
 
   function _userCard(user) {
-    const detail = user?.bio || (user.plan === 'premium' || user.isPremium ? 'Premium member' : 'Free member');
+    const detail = user?.bio || (user.plan === 'premium' || user.isPremium ? _t('messages.premiumMember') : _t('messages.freeMember'));
     return `
       <button class="dm-user" type="button" onclick="IBlog.MessageCenter.startConversation(JSON.parse(decodeURIComponent('${_payload(user)}')))">
         ${_avatarMarkup(user, 40)}
         <div class="dm-user-copy">
-          <strong>${_escapeHtml(user.name || 'Unknown')}</strong>
+          <strong>${_escapeHtml(user.name || _t('messages.unknown'))}</strong>
           <span>${_escapeHtml(detail)}</span>
         </div>
-        <span class="dm-start">Message</span>
+        <span class="dm-start">${_t('messages.message')}</span>
       </button>`;
   }
 
@@ -221,7 +222,7 @@
     const button = document.getElementById('dm-send-btn');
     if (input) {
       input.disabled = !active;
-      input.placeholder = active ? 'Write a private message...' : 'Pick a conversation to write a message...';
+      input.placeholder = active ? _t('messages.writeMessagePlaceholder') : _t('messages.pickConversationPlaceholder');
     }
     if (button) {
       button.disabled = !active;
@@ -265,12 +266,12 @@
       if (count) count.textContent = String(threads.length);
       if (!filtered.length) {
         list.innerHTML = loweredQuery
-          ? '<div class="dm-empty-inline">No matching conversations.</div>'
-          : '<div class="dm-empty-inline">No private conversations yet.</div>';
+          ? `<div class="dm-empty-inline">${_t('messages.noMatchingConversations')}</div>`
+          : `<div class="dm-empty-inline">${_t('messages.noPrivateConversations')}</div>`;
         return threads;
       }
       if (!threads.length) {
-        list.innerHTML = '<div class="dm-empty-inline">No private conversations yet.</div>';
+        list.innerHTML = `<div class="dm-empty-inline">${_t('messages.noPrivateConversations')}</div>`;
         return [];
       }
       list.innerHTML = filtered.map(_threadCard).join('');
@@ -299,8 +300,8 @@
       list.innerHTML = filtered.length
         ? filtered.map(_userCard).join('')
         : loweredQuery
-          ? '<div class="dm-empty-inline">No matching people found.</div>'
-          : '<div class="dm-empty-inline">No conversation people yet. Start a chat from a profile or search result.</div>';
+          ? `<div class="dm-empty-inline">${_t('messages.noMatchingPeople')}</div>`
+          : `<div class="dm-empty-inline">${_t('messages.noConversationPeople')}</div>`;
     } catch (error) {
       list.innerHTML = `<div class="dm-empty-inline">${_escapeHtml(_friendlyError(error, 'people'))}</div>`;
     }
@@ -314,13 +315,13 @@
       <div class="dm-header-user">
         ${_avatarMarkup(user, 48)}
         <div>
-          <strong>${_escapeHtml(user?.name || 'Unknown')}</strong>
-          <span>${_escapeHtml(user?.bio || user?.email || 'Private conversation')}</span>
+          <strong>${_escapeHtml(user?.name || _t('messages.unknown'))}</strong>
+          <span>${_escapeHtml(user?.bio || user?.email || _t('messages.privateConversation'))}</span>
         </div>
       </div>
       <div class="dm-panel-actions">
-        <button class="dm-open-profile" type="button" onclick="IBlog.Profile?.openUserProfile?.(JSON.parse(decodeURIComponent('${_payload(user)}')))">View profile</button>
-        <button class="dm-open-profile dm-delete-thread" type="button" onclick="IBlog.MessageCenter.deleteConversation()">Delete conversation</button>
+        <button class="dm-open-profile" type="button" onclick="IBlog.Profile?.openUserProfile?.(JSON.parse(decodeURIComponent('${_payload(user)}')))">${_t('messages.viewProfile')}</button>
+        <button class="dm-open-profile dm-delete-thread" type="button" onclick="IBlog.MessageCenter.deleteConversation()">${_t('messages.deleteConversation')}</button>
       </div>`;
   }
 
@@ -332,7 +333,7 @@
 
     const list = document.getElementById('dm-messages');
     if (!list) return;
-    list.innerHTML = '<div class="dm-loading">Loading messages...</div>';
+    list.innerHTML = `<div class="dm-loading">${_t('messages.loadingMessages')}</div>`;
 
     try {
       const data = await _request('dm_messages', { partnerId: Number(partner.id) });
@@ -344,8 +345,8 @@
         list.innerHTML = `
           <div class="dm-empty">
             <div class="dm-empty-icon">DM</div>
-            <strong>No messages yet</strong>
-            <p>Send the first private message to start the conversation.</p>
+            <strong>${_t('messages.noMessagesYet')}</strong>
+            <p>${_t('messages.noMessagesBody')}</p>
           </div>`;
         return;
       }
@@ -394,8 +395,8 @@
     if (!current) {
       const threadList = document.getElementById('dm-thread-list');
       const userList = document.getElementById('dm-user-list');
-      if (threadList) threadList.innerHTML = '<div class="dm-empty-inline">Sign in to use private messages.</div>';
-      if (userList) userList.innerHTML = '<div class="dm-empty-inline">Sign in to discover people.</div>';
+      if (threadList) threadList.innerHTML = `<div class="dm-empty-inline">${_t('messages.signInInbox')}</div>`;
+      if (userList) userList.innerHTML = `<div class="dm-empty-inline">${_t('messages.signInPeople')}</div>`;
       return;
     }
 
@@ -427,7 +428,7 @@
     const text = input?.value.trim();
     if (!text) return;
     if (!_activePartner?.id) {
-      IBlog.utils?.toast('Pick a person first.', 'info');
+      IBlog.utils?.toast(_t('messages.pickPersonFirst'), 'info');
       return;
     }
 
@@ -451,19 +452,22 @@
       _threadsCache = [];
       await _loadThreads();
       await _loadConversation(_activePartner);
-      IBlog.Notifications?.push?.(`New private message sent to <strong>${_escapeHtml(_activePartner.name || 'member')}</strong>.`, 'message');
+      IBlog.Notifications?.push?.({
+        messageKey: 'notifications.privateMessageSent',
+        messageVars: { name: _activePartner.name || 'member' },
+      }, 'message');
     } catch (error) {
-      IBlog.utils?.toast(error?.message || 'Could not send private message.', 'error');
+      IBlog.utils?.toast(error?.message || _t('messages.sendMessageError'), 'error');
     }
   }
 
   async function deleteConversation() {
     if (!_activePartner?.id) {
-      IBlog.utils?.toast('Pick a conversation first.', 'info');
+      IBlog.utils?.toast(_t('messages.selectConversation'), 'info');
       return;
     }
 
-    if (!window.confirm('Delete this conversation for both sides?')) {
+    if (!window.confirm(_t('messages.deleteConversationConfirm'))) {
       return;
     }
 
@@ -476,9 +480,9 @@
       _threadsCache = [];
       _conversationPartnerIds = new Set();
       await build();
-      IBlog.utils?.toast('Conversation deleted.', 'success');
+      IBlog.utils?.toast(_t('messages.conversationDeleted'), 'success');
     } catch (error) {
-      IBlog.utils?.toast(error?.message || 'Could not delete this conversation.', 'error');
+      IBlog.utils?.toast(error?.message || _t('messages.deleteConversationError'), 'error');
     }
   }
 
@@ -503,5 +507,14 @@
       }
     });
     window.__iblogDmSessionBound = true;
+  }
+
+  if (!window.__iblogDmLocaleBound) {
+    window.addEventListener('iblog:locale-changed', () => {
+      if (document.getElementById('messages-list')) {
+        build();
+      }
+    });
+    window.__iblogDmLocaleBound = true;
   }
 })();

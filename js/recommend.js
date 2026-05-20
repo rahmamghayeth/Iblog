@@ -62,42 +62,30 @@
       .trim();
   }
 
-  function expandInterestValues(values) {
-    const expanded = new Map();
-
-    values.forEach((value) => {
-      const key = canonicalWord(value);
-      if (!key) return;
-      expanded.set(key, String(value).trim());
-
-      const aliases = INTEREST_SYNONYMS[key] || [];
-      aliases.forEach((alias) => {
-        const aliasKey = canonicalWord(alias);
-        if (aliasKey && !expanded.has(aliasKey)) {
-          expanded.set(aliasKey, alias);
-        }
-      });
-    });
-
-    return [...expanded.values()];
+  function uniqueCanonicalValues(values) {
+    return [...new Set(
+      values
+        .map((item) => canonicalWord(item))
+        .filter(Boolean)
+    )];
   }
 
-  function toInterestsArray(input) {
+  function toProfileInterestsArray(input) {
     if (Array.isArray(input)) {
-      return expandInterestValues(input.map((item) => String(item || "").trim()).filter(Boolean));
+      return uniqueCanonicalValues(input);
     }
     if (typeof input === "string" && input.trim()) {
-      return expandInterestValues(input.split(",").map((item) => item.trim()).filter(Boolean));
+      return uniqueCanonicalValues(input.split(","));
     }
     if (input && typeof input === "object") {
-      return expandInterestValues([
-        ...(Array.isArray(input.interests) ? input.interests : []),
-        ...(Array.isArray(input.fields) ? input.fields : []),
-        ...(Array.isArray(input.subjects) ? input.subjects : []),
-        ...(Array.isArray(input.fieldIds) ? input.fieldIds : []),
-        ...(Array.isArray(input.subjectIds) ? input.subjectIds : []),
-        ...(Array.isArray(input.interestIds) ? input.interestIds : [])
-      ].map((item) => String(item || "").trim()).filter(Boolean));
+      const selectedProfileInterests = Array.isArray(input.interestIds) && input.interestIds.length
+        ? input.interestIds
+        : [
+            ...(Array.isArray(input.fields) ? input.fields : []),
+            ...(Array.isArray(input.subjects) ? input.subjects : [])
+          ];
+
+      return uniqueCanonicalValues(selectedProfileInterests);
     }
     return [];
   }
@@ -106,106 +94,6 @@
     const active = document.querySelector(".feed-tab.active");
     const key = String(active?.dataset?.feedTab || active?.textContent || "recommended").trim().toLowerCase().replace(/\s+/g, "");
     return ["recommended", "following", "latest"].includes(key) ? key : "recommended";
-  }
-
-  function interestAliases(interest) {
-    const key = canonicalWord(interest);
-    const aliases = [key];
-    if (INTEREST_SYNONYMS[key]) aliases.push(...INTEREST_SYNONYMS[key]);
-    return [...new Set(aliases.map(canonicalWord).filter(Boolean))];
-  }
-
-  function articleMatchesInterests(article, interests) {
-    return articleInterestScore(article, interests) > 0;
-  }
-
-  function aliasMatchesToken(token, alias) {
-    if (!token || !alias) return false;
-    return token === alias || token.includes(alias) || alias.includes(token);
-  }
-
-  function articleInterestScore(article, interests) {
-    const categoryTokens = [
-      canonicalWord(article?.category || ""),
-      canonicalWord(article?.cat || "")
-    ].filter(Boolean);
-    const tagTokens = [
-      ...String(Array.isArray(article?.tags) ? article.tags.join(",") : article?.tags || "")
-        .split(",")
-        .map(canonicalWord)
-        .filter(Boolean)
-    ];
-    const titleText = canonicalWord(article?.title || "");
-    const summaryText = canonicalWord([
-      article?.excerpt || "",
-      article?.body || ""
-    ].join(" "));
-    let score = 0;
-
-    interests.forEach((interest) => {
-      interestAliases(interest).forEach((alias) => {
-        if (!alias) return;
-        if (categoryTokens.some((token) => aliasMatchesToken(token, alias))) {
-          score += 8;
-          return;
-        }
-        if (tagTokens.some((token) => aliasMatchesToken(token, alias))) {
-          score += 6;
-          return;
-        }
-        if (titleText && titleText.includes(alias)) {
-          score += 3;
-          return;
-        }
-        if (summaryText && summaryText.includes(alias)) {
-          score += 1;
-        }
-      });
-    });
-
-    return score;
-  }
-
-  function scoreLocalArticles(interests) {
-    return (window.IBlog?.state?.articles || [])
-      .map((article) => ({
-        id: Number(article?.id),
-        score: articleInterestScore(article, interests)
-      }))
-      .filter((entry) => Number.isFinite(entry.id) && entry.score > 0)
-      .sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        return b.id - a.id;
-      });
-  }
-
-  function reorderMainFeedByIds(recommendedIds, directMatchedIds, localScoreMap = new Map()) {
-    if (!Array.isArray(window.IBlog?.state?.articles)) return;
-
-    const source = window.IBlog.state.articles;
-    const directRank = new Map(directMatchedIds.map((id, index) => [String(id), index]));
-    const relatedRank = new Map(recommendedIds.map((id, index) => [String(id), index]));
-
-    source.sort((a, b) => {
-      const aId = String(a?.id ?? "");
-      const bId = String(b?.id ?? "");
-      const aScore = Number(localScoreMap.get(aId) || 0);
-      const bScore = Number(localScoreMap.get(bId) || 0);
-
-      if (aScore !== bScore) return bScore - aScore;
-
-      const aDirect = directRank.has(aId);
-      const bDirect = directRank.has(bId);
-
-      if (aDirect !== bDirect) return aDirect ? -1 : 1;
-      if (aDirect && bDirect) return directRank.get(aId) - directRank.get(bId);
-
-      const aRelated = relatedRank.has(aId) ? relatedRank.get(aId) : Number.MAX_SAFE_INTEGER;
-      const bRelated = relatedRank.has(bId) ? relatedRank.get(bId) : Number.MAX_SAFE_INTEGER;
-      if (aRelated !== bRelated) return aRelated - bRelated;
-
-      return (Number(b?.id) || 0) - (Number(a?.id) || 0);
-    });
   }
 
   function renderRecommended(recommendedIds = [], directMatchedIds = []) {
@@ -222,7 +110,7 @@
         window.IBlogRecommendState.scope = currentScope;
       }
 
-      const interests = [...new Set(toInterestsArray(interestsSource))];
+      const interests = toProfileInterestsArray(interestsSource);
       if (!interests.length) {
         window.IBlogRecommendState.directMatchedIds = [];
         window.IBlogRecommendState.recommendedIds = [];
@@ -231,26 +119,20 @@
       }
 
       const { recommendedIds, directMatchedIds } = await fetchRecommended(interests);
-      const scoredLocalArticles = scoreLocalArticles(interests);
-      const localScoreMap = new Map(scoredLocalArticles.map((entry) => [String(entry.id), entry.score]));
-      const localDirectIds = scoredLocalArticles.map((entry) => entry.id);
-      const mergedDirect = [...new Set([...localDirectIds, ...directMatchedIds])];
-      const mergedRecommended = [...new Set([
-        ...mergedDirect,
-        ...recommendedIds,
-        ...scoredLocalArticles.map((entry) => entry.id)
+      const matchedIds = [...new Set([
+        ...directMatchedIds,
+        ...recommendedIds
       ])];
 
-      if (!mergedRecommended.length) {
+      if (!matchedIds.length) {
         window.IBlogRecommendState.directMatchedIds = [];
         window.IBlogRecommendState.recommendedIds = [];
         window.IBlog?.Feed?.build?.(getActiveFeedTab(), "feed-container");
         return;
       }
 
-      window.IBlogRecommendState.directMatchedIds = mergedDirect;
-      window.IBlogRecommendState.recommendedIds = mergedRecommended;
-      reorderMainFeedByIds(mergedRecommended, mergedDirect, localScoreMap);
+      window.IBlogRecommendState.directMatchedIds = matchedIds;
+      window.IBlogRecommendState.recommendedIds = matchedIds;
       window.IBlog?.Feed?.build?.(getActiveFeedTab(), "feed-container");
     } catch (error) {
       console.warn("Recommendation flow failed:", error);
@@ -258,7 +140,7 @@
   }
 
   async function fetchRecommended(interests) {
-    const list = [...new Set(toInterestsArray(interests))];
+    const list = toProfileInterestsArray(interests);
     const params = new URLSearchParams();
     if (list.length) params.set("interests", list.join(","));
 
