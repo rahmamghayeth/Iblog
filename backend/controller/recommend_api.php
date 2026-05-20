@@ -29,6 +29,7 @@ $directMatchedIds = array_values(array_unique(array_map(
     static fn(array $row): int => (int) ($row['id'] ?? 0),
     $matched
 )));
+$recommendedIds = expand_recommended_article_ids($cnx, $directMatchedIds);
 
 $articles = [];
 foreach ($matched as $article) {
@@ -48,7 +49,7 @@ foreach ($matched as $article) {
 echo json_encode([
     'ok' => true,
     'articles' => $articles,
-    'recommendedIds' => $directMatchedIds,
+    'recommendedIds' => $recommendedIds,
     'directMatchedIds' => $directMatchedIds,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 exit;

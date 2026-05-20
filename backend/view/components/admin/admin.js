@@ -12,8 +12,8 @@ const IBlogAdmin = (() => {
 
   let users = [];
   let articles = [];
+  let revenueMembers = [];
   let userFilter = 'all';
-  let articleFilter = 'all';
 
   const CATS = [
     'AI',
@@ -199,7 +199,7 @@ const IBlogAdmin = (() => {
     const form = document.getElementById('admin-user-form');
     if (!form) return;
     form.reset();
-    setText('user-modal-title', 'Create user');
+    setText('user-modal-title', 'New user');
     document.getElementById('user-form-mode').value = 'create';
     document.getElementById('user-form-id').value = '';
     document.getElementById('user-password').required = true;
@@ -304,7 +304,7 @@ const IBlogAdmin = (() => {
   async function loadArticles() {
     const data = await api('get_articles');
     articles = data.articles ?? [];
-    setText('articles-badge', articles.filter((article) => article.label === 'hidden').length);
+    setText('articles-badge', articles.length);
     buildArticlesTable();
   }
 
@@ -313,7 +313,6 @@ const IBlogAdmin = (() => {
     if (!tbody) return;
 
     let rows = [...articles];
-    if (articleFilter !== 'all') rows = rows.filter((article) => article.label === articleFilter);
 
     if (query) {
       const q = query.toLowerCase();
@@ -324,7 +323,7 @@ const IBlogAdmin = (() => {
     }
 
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="6" class="admin-empty-row">No articles found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="4" class="admin-empty-row">No articles found.</td></tr>';
       return;
     }
 
@@ -355,17 +354,6 @@ const IBlogAdmin = (() => {
             </select>
           </td>
           <td>${Number(article.views || 0).toLocaleString()}</td>
-          <td>${labelBadge(article.label || 'none')}</td>
-          <td>
-            <select class="admin-cat-select" onchange="IBlogAdmin.setLabel(${Number(article.id)}, this.value)">
-              <option value="">Set label</option>
-              <option value="featured">Featured</option>
-              <option value="pinned">Pinned</option>
-              <option value="boosted">Boosted</option>
-              <option value="hidden">Hidden</option>
-              <option value="none">Clear</option>
-            </select>
-          </td>
         </tr>
       `;
     }).join('');
@@ -375,13 +363,6 @@ const IBlogAdmin = (() => {
     buildArticlesTable(query);
   }
 
-  function filterArticlesByStatus(el, status) {
-    articleFilter = status;
-    document.querySelectorAll('#view-articles .admin-filter-chip').forEach((chip) => chip.classList.remove('active'));
-    if (el) el.classList.add('active');
-    buildArticlesTable(document.getElementById('article-search')?.value || '');
-  }
-
   async function changeCat(id, cat) {
     await api('change_cat', { id, cat });
     const target = articles.find((article) => Number(article.id) === Number(id));
@@ -389,19 +370,10 @@ const IBlogAdmin = (() => {
     toast(`Category updated to ${cat}`, 'success');
   }
 
-  async function setLabel(id, label) {
-    if (!label) return;
-    await api('set_label', { id, label });
-    const target = articles.find((article) => Number(article.id) === Number(id));
-    if (target) target.label = label;
-    buildArticlesTable(document.getElementById('article-search')?.value || '');
-    setText('articles-badge', articles.filter((article) => article.label === 'hidden').length);
-    toast(`Label updated to ${label}`, 'success');
-  }
-
   async function loadRevenue() {
     const data = await api('get_revenue');
-    buildRevenueTable(data.members ?? []);
+    revenueMembers = data.members ?? [];
+    buildRevenueTable(revenueMembers);
   }
 
   function buildRevenueTable(members) {
@@ -500,7 +472,7 @@ const IBlogAdmin = (() => {
 
   function buildCharts() {
     const signupSeries = new Array(8).fill(0);
-    users.forEach((user) => {
+    users.filter((user) => Number(user.isAdmin || 0) !== 1).forEach((user) => {
       const createdAt = user.created_at || user.createdAt;
       if (!createdAt) return;
       const ageInDays = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
@@ -508,13 +480,18 @@ const IBlogAdmin = (() => {
       signupSeries[7 - bucket] += 1;
     });
 
-    const revenueSeries = signupSeries.map((value, index) => {
-      const premiumRatio = users.length ? users.filter((user) => user.plan === 'premium').length / users.length : 0;
-      return Math.max(1, Math.round((value + index + 1) * Math.max(premiumRatio, 0.2) * 3));
+    const revenueSeries = new Array(8).fill(0);
+    revenueMembers.forEach((member) => {
+      if (String(member.status || 'active').toLowerCase() !== 'active') return;
+      const startedAt = member.started_at;
+      if (!startedAt) return;
+      const ageInDays = Math.floor((Date.now() - new Date(startedAt).getTime()) / 86400000);
+      const bucket = Math.min(7, Math.max(0, Math.floor(ageInDays / 30)));
+      revenueSeries[7 - bucket] += Number(member.amount || 0);
     });
 
     renderChart('chart-users', signupSeries.map((value, index) => Math.max(value, index === 0 ? 1 : signupSeries[index - 1] || 1)), 'W');
-    renderChart('chart-revenue', revenueSeries, 'M');
+    renderChart('chart-revenue', revenueSeries.map((value) => Math.max(value, 0)), 'M');
   }
 
   function renderChart(id, series, prefix) {
@@ -564,17 +541,6 @@ const IBlogAdmin = (() => {
     el._timer = setTimeout(() => {
       el.className = 'admin-toast';
     }, 3200);
-  }
-
-  function labelBadge(label) {
-    const labels = {
-      featured: '<span class="abadge abadge-featured">Featured</span>',
-      pinned: '<span class="abadge abadge-pinned">Pinned</span>',
-      boosted: '<span class="abadge abadge-boosted">Boosted</span>',
-      hidden: '<span class="abadge abadge-hidden">Hidden</span>',
-      none: '<span class="abadge abadge-none">None</span>'
-    };
-    return labels[label] || labels.none;
   }
 
   function setText(id, value) {
@@ -628,9 +594,7 @@ const IBlogAdmin = (() => {
     toggleBan,
     deleteUser,
     filterArticles,
-    filterArticlesByStatus,
     changeCat,
-    setLabel,
     cancelSubscription,
     closeConfirm,
     toast

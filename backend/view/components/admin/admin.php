@@ -10,6 +10,10 @@ if (!isset($_SESSION['isAdmin']) || (int) $_SESSION['isAdmin'] !== 1) {
 $_SESSION['adminLoggedIn'] = true;
 
 $adminName = htmlspecialchars((string) ($_SESSION['name'] ?? 'Admin'), ENT_QUOTES, 'UTF-8');
+$assetVersion = (string) max(
+    (int) (@filemtime(__DIR__ . '/admin.css') ?: time()),
+    (int) (@filemtime(__DIR__ . '/admin.js') ?: time())
+);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -17,7 +21,7 @@ $adminName = htmlspecialchars((string) ($_SESSION['name'] ?? 'Admin'), ENT_QUOTE
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IBlog Admin Dashboard</title>
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin.css?v=<?= urlencode($assetVersion) ?>">
 </head>
 <body>
   <aside class="admin-sidebar">
@@ -62,7 +66,6 @@ $adminName = htmlspecialchars((string) ($_SESSION['name'] ?? 'Admin'), ENT_QUOTE
       </div>
       <div class="admin-topbar-side">
         <div class="admin-time-pill" id="admin-time"></div>
-        <button class="admin-btn admin-btn-primary" type="button" onclick="IBlogAdmin.openCreateUser()">Create user</button>
       </div>
     </div>
 
@@ -136,7 +139,7 @@ $adminName = htmlspecialchars((string) ($_SESSION['name'] ?? 'Admin'), ENT_QUOTE
         <div class="admin-view-head">
           <div>
             <h2>Users</h2>
-            <p>Create, edit, ban, or remove community members.</p>
+            <p>Edit, ban, or remove community members.</p>
           </div>
           <button class="admin-btn admin-btn-primary" type="button" onclick="IBlogAdmin.openCreateUser()">New user</button>
         </div>
@@ -176,7 +179,7 @@ $adminName = htmlspecialchars((string) ($_SESSION['name'] ?? 'Admin'), ENT_QUOTE
         <div class="admin-view-head">
           <div>
             <h2>Articles</h2>
-            <p>Adjust labels and categories directly from the dashboard.</p>
+            <p>Adjust article categories directly from the dashboard.</p>
           </div>
         </div>
 
@@ -184,13 +187,6 @@ $adminName = htmlspecialchars((string) ($_SESSION['name'] ?? 'Admin'), ENT_QUOTE
           <div class="admin-toolbar">
             <div class="search-bar">
               <input id="article-search" type="search" placeholder="Search articles by title or author" oninput="IBlogAdmin.filterArticles(this.value)">
-            </div>
-            <div class="admin-filter-row">
-              <button class="admin-filter-chip active" type="button" onclick="IBlogAdmin.filterArticlesByStatus(this, 'all')">All</button>
-              <button class="admin-filter-chip" type="button" onclick="IBlogAdmin.filterArticlesByStatus(this, 'featured')">Featured</button>
-              <button class="admin-filter-chip" type="button" onclick="IBlogAdmin.filterArticlesByStatus(this, 'pinned')">Pinned</button>
-              <button class="admin-filter-chip" type="button" onclick="IBlogAdmin.filterArticlesByStatus(this, 'boosted')">Boosted</button>
-              <button class="admin-filter-chip" type="button" onclick="IBlogAdmin.filterArticlesByStatus(this, 'hidden')">Hidden</button>
             </div>
           </div>
 
@@ -202,8 +198,6 @@ $adminName = htmlspecialchars((string) ($_SESSION['name'] ?? 'Admin'), ENT_QUOTE
                   <th>Author</th>
                   <th>Category</th>
                   <th>Views</th>
-                  <th>Label</th>
-                  <th>Change label</th>
                 </tr>
               </thead>
               <tbody id="articles-table"></tbody>
@@ -255,7 +249,7 @@ $adminName = htmlspecialchars((string) ($_SESSION['name'] ?? 'Admin'), ENT_QUOTE
     <div class="admin-modal-card">
       <div class="section-head">
         <div>
-          <h3 id="user-modal-title">Create user</h3>
+          <h3 id="user-modal-title">User details</h3>
           <p>Manage user access and plan details.</p>
         </div>
         <button class="admin-modal-close" type="button" onclick="IBlogAdmin.closeUserModal()">Close</button>
@@ -307,6 +301,6 @@ $adminName = htmlspecialchars((string) ($_SESSION['name'] ?? 'Admin'), ENT_QUOTE
 
   <div class="admin-toast" id="admin-toast"></div>
 
-  <script src="admin.js"></script>
+  <script src="admin.js?v=<?= urlencode($assetVersion) ?>"></script>
 </body>
 </html>

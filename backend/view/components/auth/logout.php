@@ -29,6 +29,6 @@ if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) || str_contains($_SERVER['HTTP_ACC
     header('Content-Type: application/json');
     echo json_encode(['ok' => true]);
 } else {
-    header('Location: auth.php?mode=signin');
+    header('Location: ../../../../index.php');
 }
 exit();

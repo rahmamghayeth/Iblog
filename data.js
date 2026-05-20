@@ -202,6 +202,27 @@ IBlog.COUNTRY_DATA = (() => {
     'Why Local Stories Travel Farther Than Ever': 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80',
   };
 
+  const articleContentOverrides = {
+    'What People Are Reading This Week': {
+      category: 'Writing',
+      excerpt: 'Editors are watching a sharp shift toward reported pieces that feel concrete, local, and worth finishing instead of broad trend summaries.',
+      body: `This week’s strongest reading pattern is not about volume. It is about specificity.\n\nAcross the most active regions, readers are spending more time with pieces that begin from a local fact, a small scene, or a clear editorial observation before widening the frame. The articles winning attention are grounded, paced well, and confident about what they are trying to explain.\n\nThat shift matters because it changes what “trending” really means. The most successful stories are not simply fast. They are focused. They respect the reader’s time, avoid vague framing, and move quickly toward a point of view readers can actually use or remember.\n\nIn practice, this week’s feed suggests that strong editorial judgment is outperforming generic recap writing. Readers still want the big picture, but they want it carried by details that feel observed rather than recycled.`,
+      tags: ['World', 'Editorial', 'Reading Patterns'],
+    },
+    'The Global Knowledge Shift': {
+      category: 'Science',
+      excerpt: 'The current wave of high-performing stories centers on evidence, learning systems, and the practical knowledge people can apply immediately.',
+      body: `A visible shift is taking place inside the global feed: readers are choosing explanation over noise.\n\nStories about research, technical literacy, and the way knowledge moves between products, schools, and public life are travelling farther than simple opinion pieces. The strongest examples do not only announce change. They explain how new knowledge is built, tested, translated, and turned into decisions.\n\nThat is why this subject is climbing now. Readers are looking for material that reduces uncertainty. They want clearer models, more useful framing, and fewer inflated claims. Articles that connect data, systems, and lived impact are holding attention longer because they make complexity easier to navigate.\n\nWhat emerges is a broader appetite for competence. The global audience is not only searching for what is new. It is searching for what is understandable, transferable, and real.`,
+      tags: ['World', 'Knowledge', 'Systems'],
+    },
+    'Why Local Stories Travel Farther Than Ever': {
+      category: 'Travel',
+      excerpt: 'Place-driven reporting is outperforming generic lifestyle writing because readers trust details that feel lived-in and transferable.',
+      body: `The stories moving fastest right now tend to start small.\n\nA neighborhood routine, a road outside the city, a market habit, a local tension between tourism and daily life: these are the entry points readers are responding to. Instead of flattening places into polished summaries, the best pieces let a destination keep its texture.\n\nThat texture is exactly what helps a local story travel. Specific details create credibility. They also give the reader something to picture, repeat, and share. A useful article does not need to describe everything about a place. It needs to notice the right thing and build from it carefully.\n\nThis is why local stories are outperforming generic destination writing. They feel closer to witness than marketing, and that difference makes them easier to trust across regions.`,
+      tags: ['World', 'Travel', 'Local Reporting'],
+    },
+  };
+
   const subjectImageSets = [
     {
       keywords: ['ai', 'technology', 'deep tech', 'product', 'mobile', 'interfaces', 'manufacturing'],
@@ -447,187 +468,188 @@ IBlog.COUNTRY_DATA = (() => {
     const primaryTopic = topics[index % (topics.length || 1)] || 'Global';
     const secondaryTopic = topics[(index + 1) % (topics.length || 1)] || primaryTopic;
     const profile = inferArticleProfile(title, topics, summary);
+    const override = articleContentOverrides[title] || null;
     const subject = title.replace(/^(how|why|what)\s+/i, '').replace(/[.?!]$/g, '').trim();
-    const excerpt = `${title} follows how ${primaryTopic.toLowerCase()} is evolving in ${country}, with a focus on ${profile.angle}.`;
-    const body = `${title} looks beyond the headline and follows the concrete forces shaping ${country}'s ${primaryTopic.toLowerCase()} conversation.\n\nUsing ${summary.charAt(0).toLowerCase()}${summary.slice(1).replace(/[. ]*$/, '')}, the piece tracks ${profile.angle} through a regional lens instead of treating it like a generic global trend.\n\nIt also connects ${primaryTopic.toLowerCase()} to ${secondaryTopic.toLowerCase()}, showing ${profile.stakes}. The result is a sharper, more grounded read on ${subject || 'the story'} and why it matters now.`;
+    const excerpt = override?.excerpt || `${title} follows how ${primaryTopic.toLowerCase()} is evolving in ${country}, with a focus on ${profile.angle}.`;
+    const body = override?.body || `${title} looks beyond the headline and follows the concrete forces shaping ${country}'s ${primaryTopic.toLowerCase()} conversation.\n\nUsing ${summary.charAt(0).toLowerCase()}${summary.slice(1).replace(/[. ]*$/, '')}, the piece tracks ${profile.angle} through a regional lens instead of treating it like a generic global trend.\n\nIt also connects ${primaryTopic.toLowerCase()} to ${secondaryTopic.toLowerCase()}, showing ${profile.stakes}. The result is a sharper, more grounded read on ${subject || 'the story'} and why it matters now.`;
     const image = pickSubjectImage(title, topics, `${summary} ${profile.angle} ${profile.stakes}`);
 
     return {
       title,
       author,
       readTime,
-      category: profile.category,
+      category: override?.category || profile.category,
       excerpt,
       body,
-      tags: [country, primaryTopic, secondaryTopic],
+      tags: Array.isArray(override?.tags) && override.tags.length ? override.tags : [country, primaryTopic, secondaryTopic],
       img: image,
       cover: image,
     };
   }
 
-  const makeCountry = (flag, coords, summary, topics, articles) => ({
+  const makeCountry = (countryName, flag, coords, summary, topics, articles) => ({
     flag,
     coords,
     summary,
     topics,
-    articles: articles.map((articleTuple, index) => buildMapArticle(flag === '🌐' ? 'World' : '', summary, topics, articleTuple, index)),
+    articles: articles.map((articleTuple, index) => buildMapArticle(countryName, summary, topics, articleTuple, index)),
   });
 
   const countries = {
-    World: makeCountry('🌐', [20, 10], 'A fast global pulse built from the most active reading regions.', ['Global', 'Trending', 'Editors Pick'], [
+    World: makeCountry('World', '🌐', [20, 10], 'A fast global pulse built from the most active reading regions.', ['Global', 'Trending', 'Editors Pick'], [
       ['What People Are Reading This Week', 'IBlog Editors'],
       ['The Global Knowledge Shift', 'IBlog Data Desk'],
       ['Why Local Stories Travel Farther Than Ever', 'IBlog Insight Team'],
     ]),
-    USA: makeCountry('🇺🇸', [39, -98], 'Startup culture, AI product launches, and creator economy momentum.', ['AI', 'Startups', 'Design'], [
+    USA: makeCountry('USA', '🇺🇸', [39, -98], 'Startup culture, AI product launches, and creator economy momentum.', ['AI', 'Startups', 'Design'], [
       ['AI Product Teams Are Rewriting the Roadmap', 'Maya Stone'],
       ['Creator Tools That Turn Ideas Into Revenue', 'Jordan Lee'],
     ]),
-    UK: makeCountry('🇬🇧', [54, -2], 'Policy, design systems, and investigative long-form reporting.', ['Politics', 'Design', 'Finance'], [
+    UK: makeCountry('UK', '🇬🇧', [54, -2], 'Policy, design systems, and investigative long-form reporting.', ['Politics', 'Design', 'Finance'], [
       ['The New City Media Playbook', 'Alice Reed'],
       ['How Designers Are Shaping Public Services', 'Noah Grant'],
     ]),
-    France: makeCountry('🇫🇷', [46.2, 2.2], 'Culture, philosophy, and premium editorial storytelling.', ['Culture', 'Philosophy', 'Art'], [
+    France: makeCountry('France', '🇫🇷', [46.2, 2.2], 'Culture, philosophy, and premium editorial storytelling.', ['Culture', 'Philosophy', 'Art'], [
       ['Why Essays Are Winning Back Attention', 'Claire Martin'],
       ['The Return of Slow Journalism', 'Julien Moreau'],
     ]),
-    Germany: makeCountry('🇩🇪', [51, 10], 'Deep technical writing and clean product thinking.', ['Technology', 'Science', 'Architecture'], [
+    Germany: makeCountry('Germany', '🇩🇪', [51, 10], 'Deep technical writing and clean product thinking.', ['Technology', 'Science', 'Architecture'], [
       ['What Solid Engineering Looks Like in 2026', 'Lena Vogel'],
       ['Industrial Design Meets Sustainable Systems', 'Tom Becker'],
     ]),
-    India: makeCountry('🇮🇳', [21, 78], 'Scale, education, and mobile-first publishing habits.', ['Education', 'Technology', 'Crypto'], [
+    India: makeCountry('India', '🇮🇳', [21, 78], 'Scale, education, and mobile-first publishing habits.', ['Education', 'Technology', 'Crypto'], [
       ['Learning Platforms Built for the Next Billion Readers', 'Anika Sharma'],
       ['Why Mobile Storytelling Dominates in India', 'Rohit Verma'],
     ]),
-    Japan: makeCountry('🇯🇵', [36, 138], 'Precision, product craft, and future-facing culture pieces.', ['Gaming', 'Design', 'Space'], [
+    Japan: makeCountry('Japan', '🇯🇵', [36, 138], 'Precision, product craft, and future-facing culture pieces.', ['Gaming', 'Design', 'Space'], [
       ['Minimal Interfaces, Maximum Trust', 'Haruka Sato'],
       ['From Tokyo Labs to Global Products', 'Kenji Tanaka'],
     ]),
-    Brazil: makeCountry('🇧🇷', [-14, -52], 'Music, creator communities, and social storytelling.', ['Music', 'Culture', 'Sports'], [
+    Brazil: makeCountry('Brazil', '🇧🇷', [-14, -52], 'Music, creator communities, and social storytelling.', ['Music', 'Culture', 'Sports'], [
       ['The Rise of Community-Driven Media', 'Ana Costa'],
       ['How Music Scenes Build New Audiences', 'Lucas Pereira'],
     ]),
-    UAE: makeCountry('🇦🇪', [24.4, 54.4], 'Premium entrepreneurship, finance, and future cities.', ['Finance', 'Startups', 'Travel'], [
+    UAE: makeCountry('UAE', '🇦🇪', [24.4, 54.4], 'Premium entrepreneurship, finance, and future cities.', ['Finance', 'Startups', 'Travel'], [
       ['Future Cities and the Newsroom of Tomorrow', 'Sara Al Nuaimi'],
       ['Capital, Culture, and the New Gulf Audience', 'Omar Khalid'],
     ]),
-    Singapore: makeCountry('🇸🇬', [1.35, 103.8], 'Regional tech, logistics, and cross-border knowledge flows.', ['Technology', 'Finance', 'Law'], [
+    Singapore: makeCountry('Singapore', '🇸🇬', [1.35, 103.8], 'Regional tech, logistics, and cross-border knowledge flows.', ['Technology', 'Finance', 'Law'], [
       ['How Small Markets Influence Big Products', 'Wei Chen'],
       ['Cross-Border Readers Want Clarity, Not Noise', 'Priya Nair'],
     ]),
-    Tunisia: makeCountry('🇹🇳', [34, 9], 'North African innovation, culture, and bilingual publishing.', ['Travel', 'Culture', 'Education'], [
+    Tunisia: makeCountry('Tunisia', '🇹🇳', [34, 9], 'North African innovation, culture, and bilingual publishing.', ['Travel', 'Culture', 'Education'], [
       ['Creators Building Bilingual Audiences', 'Nour Ben Ali'],
       ['From Tunis to the World: Local Ideas With Reach', 'Youssef Haddad'],
     ]),
-    Canada: makeCountry('🇨🇦', [56.1, -106.3], 'Research, climate, and thoughtful long-form analysis.', ['Climate', 'Science', 'Health'], [
+    Canada: makeCountry('Canada', '🇨🇦', [56.1, -106.3], 'Research, climate, and thoughtful long-form analysis.', ['Climate', 'Science', 'Health'], [
       ['The Climate Story Readers Keep Returning To', 'Emily Clarke'],
       ['Research Notes That Feel Human', 'Oliver Bennett'],
     ]),
-    Australia: makeCountry('🇦🇺', [-25, 133], 'Remote work, design, and the next generation of communities.', ['Travel', 'Design', 'Environment'], [
+    Australia: makeCountry('Australia', '🇦🇺', [-25, 133], 'Remote work, design, and the next generation of communities.', ['Travel', 'Design', 'Environment'], [
       ['Distributed Teams Are Changing Publishing', 'Grace Wilson'],
       ['Why Outdoor Culture Shifts Digital Habits', 'Mason Taylor'],
     ]),
-    'South Korea': makeCountry('🇰🇷', [36.5, 127.9], 'Fast product cycles, entertainment, and audience velocity.', ['Gaming', 'Technology', 'Music'], [
+    'South Korea': makeCountry('South Korea', '🇰🇷', [36.5, 127.9], 'Fast product cycles, entertainment, and audience velocity.', ['Gaming', 'Technology', 'Music'], [
       ['Fast Iteration, Clear Identity', 'Minji Park'],
       ['Entertainment Platforms as Knowledge Engines', 'Joon Kim'],
     ]),
-    Morocco: makeCountry('🇲🇦', [31.8, -7.1], 'Tourism, creators, and regional business growth.', ['Travel', 'Culture', 'Startups'], [
+    Morocco: makeCountry('Morocco', '🇲🇦', [31.8, -7.1], 'Tourism, creators, and regional business growth.', ['Travel', 'Culture', 'Startups'], [
       ['Local Travel Stories That Sell the Destination', 'Salma El Idrissi'],
       ['How Founders Are Building for the Region', 'Yassine El Amrani'],
     ]),
-    'Saudi Arabia': makeCountry('🇸🇦', [23.9, 45.1], 'Investment, future cities, and large-scale transformation.', ['Politics', 'Finance', 'Space'], [
+    'Saudi Arabia': makeCountry('Saudi Arabia', '🇸🇦', [23.9, 45.1], 'Investment, future cities, and large-scale transformation.', ['Politics', 'Finance', 'Space'], [
       ['Big Infrastructure, Bigger Audience Expectations', 'Leen Alharbi'],
       ['What Readers Want From a Rapidly Changing Gulf', 'Fahad Alqahtani'],
     ]),
-    Spain: makeCountry('🇪🇸', [40.4, -3.7], 'Creative media, architecture, and reflective long-form culture writing.', ['Culture', 'Architecture', 'Travel'], [
+    Spain: makeCountry('Spain', '🇪🇸', [40.4, -3.7], 'Creative media, architecture, and reflective long-form culture writing.', ['Culture', 'Architecture', 'Travel'], [
       ['How Editorial Design Shapes City Stories', 'Lucia Navarro'],
       ['Mediterranean Storytelling in a Digital Era', 'Javier Ortiz'],
     ]),
-    Italy: makeCountry('🇮🇹', [41.9, 12.5], 'Heritage, design, and modern craftsmanship in publishing.', ['Design', 'History', 'Food'], [
+    Italy: makeCountry('Italy', '🇮🇹', [41.9, 12.5], 'Heritage, design, and modern craftsmanship in publishing.', ['Design', 'History', 'Food'], [
       ['Craft, Taste, and the Future of Lifestyle Writing', 'Giulia Conti'],
       ['Why Beautiful Interfaces Still Matter', 'Marco Bellini'],
     ]),
-    Portugal: makeCountry('🇵🇹', [39.4, -8.2], 'Remote work, ocean economy, and human-centered travel narratives.', ['Travel', 'Startups', 'Environment'], [
+    Portugal: makeCountry('Portugal', '🇵🇹', [39.4, -8.2], 'Remote work, ocean economy, and human-centered travel narratives.', ['Travel', 'Startups', 'Environment'], [
       ['The Atlantic Coast as a Creative Workspace', 'Ines Duarte'],
       ['Small Countries, Global Creative Reach', 'Rui Matos'],
     ]),
-    Mexico: makeCountry('🇲🇽', [23.6, -102.5], 'Culture, entrepreneurship, and strong community-led storytelling.', ['Culture', 'Business', 'Food'], [
+    Mexico: makeCountry('Mexico', '🇲🇽', [23.6, -102.5], 'Culture, entrepreneurship, and strong community-led storytelling.', ['Culture', 'Business', 'Food'], [
       ['How Community Media Builds Trust Faster', 'Andrea Solis'],
       ['Food Writing That Carries Identity', 'Diego Herrera'],
     ]),
-    Argentina: makeCountry('🇦🇷', [-38.4, -63.6], 'Economics, long-form essays, and emerging creator circles.', ['Economics', 'Culture', 'Writing'], [
+    Argentina: makeCountry('Argentina', '🇦🇷', [-38.4, -63.6], 'Economics, long-form essays, and emerging creator circles.', ['Economics', 'Culture', 'Writing'], [
       ['Why Essays Still Move Audiences', 'Valentina Rios'],
       ['Creator Economies During Uncertain Times', 'Nicolas Vega'],
     ]),
-    Chile: makeCountry('🇨🇱', [-35.7, -71.5], 'Climate, science, and careful policy analysis.', ['Climate', 'Science', 'Politics'], [
+    Chile: makeCountry('Chile', '🇨🇱', [-35.7, -71.5], 'Climate, science, and careful policy analysis.', ['Climate', 'Science', 'Politics'], [
       ['What Coastal Cities Teach Us About Climate Adaptation', 'Camila Fuentes'],
       ['Science Writing With Civic Impact', 'Tomas Araya'],
     ]),
-    Nigeria: makeCountry('🇳🇬', [9.1, 8.7], 'Fintech, youth media, and bold entrepreneurial momentum.', ['Finance', 'Startups', 'Technology'], [
+    Nigeria: makeCountry('Nigeria', '🇳🇬', [9.1, 8.7], 'Fintech, youth media, and bold entrepreneurial momentum.', ['Finance', 'Startups', 'Technology'], [
       ['Fintech Stories People Actually Finish Reading', 'Amina Yusuf'],
       ['The New Confidence of African Product Writing', 'Chinedu Okafor'],
     ]),
-    Kenya: makeCountry('🇰🇪', [-0.1, 37.9], 'Climate innovation, agriculture, and regional entrepreneurship.', ['Environment', 'Business', 'Education'], [
+    Kenya: makeCountry('Kenya', '🇰🇪', [-0.1, 37.9], 'Climate innovation, agriculture, and regional entrepreneurship.', ['Environment', 'Business', 'Education'], [
       ['How Climate Startups Earn Public Trust', 'Wanjiku Njeri'],
       ['Agritech Narratives That Change Behavior', 'Brian Otieno'],
     ]),
-    Egypt: makeCountry('🇪🇬', [26.8, 30.8], 'History, civic writing, and high-interest educational content.', ['History', 'Education', 'Politics'], [
+    Egypt: makeCountry('Egypt', '🇪🇬', [26.8, 30.8], 'History, civic writing, and high-interest educational content.', ['History', 'Education', 'Politics'], [
       ['Why Historical Writing Feels New Again', 'Laila Hassan'],
       ['Learning Content That Travels Beyond the Classroom', 'Karim Adel'],
     ]),
-    Algeria: makeCountry('🇩🇿', [28, 1.6], 'Energy, regional policy, and thoughtful social commentary.', ['Politics', 'Energy', 'Culture'], [
+    Algeria: makeCountry('Algeria', '🇩🇿', [28, 1.6], 'Energy, regional policy, and thoughtful social commentary.', ['Politics', 'Energy', 'Culture'], [
       ['Energy Reporting Readers Can Actually Understand', 'Sofiane Meziane'],
       ['Regional Commentary Without the Noise', 'Amel Benyahia'],
     ]),
-    Turkey: makeCountry('🇹🇷', [39, 35.2], 'Geopolitics, design culture, and audience-rich explanatory writing.', ['Politics', 'Design', 'Travel'], [
+    Turkey: makeCountry('Turkey', '🇹🇷', [39, 35.2], 'Geopolitics, design culture, and audience-rich explanatory writing.', ['Politics', 'Design', 'Travel'], [
       ['Explainers That Make Complex Regions Legible', 'Ece Demir'],
       ['Where Design and Journalism Meet', 'Mert Kaya'],
     ]),
-    Qatar: makeCountry('🇶🇦', [25.3, 51.2], 'Global business, sports media, and polished premium editorial.', ['Sports', 'Finance', 'Media'], [
+    Qatar: makeCountry('Qatar', '🇶🇦', [25.3, 51.2], 'Global business, sports media, and polished premium editorial.', ['Sports', 'Finance', 'Media'], [
       ['Premium Sports Coverage Beyond the Headlines', 'Noor Al Thani'],
       ['What Business Readers Want From Fast News', 'Hamad Jaber'],
     ]),
-    Indonesia: makeCountry('🇮🇩', [-2.5, 118], 'Mobile-first audiences, creator education, and social media insight.', ['Technology', 'Education', 'Culture'], [
+    Indonesia: makeCountry('Indonesia', '🇮🇩', [-2.5, 118], 'Mobile-first audiences, creator education, and social media insight.', ['Technology', 'Education', 'Culture'], [
       ['What Mobile Readers Reward With Attention', 'Ayu Prasetyo'],
       ['Creator Education for Massive Audiences', 'Rizky Mahendra'],
     ]),
-    Malaysia: makeCountry('🇲🇾', [4.2, 102], 'Cross-border business, AI operations, and multilingual media.', ['Business', 'AI', 'Culture'], [
+    Malaysia: makeCountry('Malaysia', '🇲🇾', [4.2, 102], 'Cross-border business, AI operations, and multilingual media.', ['Business', 'AI', 'Culture'], [
       ['How Multilingual Publishing Changes Product Decisions', 'Nadia Rahman'],
       ['Operational AI With Real Business Value', 'Farid Iskandar'],
     ]),
-    Thailand: makeCountry('🇹🇭', [15.8, 101], 'Hospitality, creator-led commerce, and design-aware storytelling.', ['Travel', 'Design', 'Business'], [
+    Thailand: makeCountry('Thailand', '🇹🇭', [15.8, 101], 'Hospitality, creator-led commerce, and design-aware storytelling.', ['Travel', 'Design', 'Business'], [
       ['When Hospitality Becomes a Content Advantage', 'Narin Chaiyo'],
       ['The New Aesthetic of Commerce Media', 'Pimlada Sae-Lim'],
     ]),
-    Philippines: makeCountry('🇵🇭', [12.8, 121.8], 'Community reporting, education, and resilient digital audiences.', ['Education', 'Culture', 'Media'], [
+    Philippines: makeCountry('Philippines', '🇵🇭', [12.8, 121.8], 'Community reporting, education, and resilient digital audiences.', ['Education', 'Culture', 'Media'], [
       ['Community Journalism That Feels Close to Home', 'Mika Santos'],
       ['Education Creators Building Real Trust', 'Paolo Reyes'],
     ]),
-    China: makeCountry('🇨🇳', [35.8, 104.2], 'Manufacturing insight, product strategy, and deep technology coverage.', ['Technology', 'Business', 'Science'], [
+    China: makeCountry('China', '🇨🇳', [35.8, 104.2], 'Manufacturing insight, product strategy, and deep technology coverage.', ['Technology', 'Business', 'Science'], [
       ['What Manufacturing Teaches Product Teams', 'Lin Zhao'],
       ['Deep Tech Writing With Global Reach', 'Qian Xu'],
     ]),
-    'South Africa': makeCountry('🇿🇦', [-30.6, 22.9], 'Climate justice, business writing, and powerful cultural reporting.', ['Climate', 'Business', 'Culture'], [
+    'South Africa': makeCountry('South Africa', '🇿🇦', [-30.6, 22.9], 'Climate justice, business writing, and powerful cultural reporting.', ['Climate', 'Business', 'Culture'], [
       ['Climate Justice Stories People Share', 'Thandi Mokoena'],
       ['Business Writing With Real Local Stakes', 'Kagiso Dlamini'],
     ]),
-    'New Zealand': makeCountry('🇳🇿', [-40.9, 174.9], 'Environmental reporting, design, and quiet long-form excellence.', ['Environment', 'Design', 'Travel'], [
+    'New Zealand': makeCountry('New Zealand', '🇳🇿', [-40.9, 174.9], 'Environmental reporting, design, and quiet long-form excellence.', ['Environment', 'Design', 'Travel'], [
       ['Nature Reporting With Emotional Clarity', 'Aria Thompson'],
       ['Why Calm Design Wins Reader Loyalty', 'Ethan McKenzie'],
     ]),
-    Russia: makeCountry('\uD83C\uDDF7\uD83C\uDDFA', [61.5, 105.3], 'Large-scale engineering, geopolitics, energy, and deep scientific analysis.', ['Science', 'Politics', 'Energy'], [
+    Russia: makeCountry('Russia', '\uD83C\uDDF7\uD83C\uDDFA', [61.5, 105.3], 'Large-scale engineering, geopolitics, energy, and deep scientific analysis.', ['Science', 'Politics', 'Energy'], [
       ['Why Engineering Narratives Still Shape Global Strategy', 'Irina Volkova'],
       ['Energy Systems Readers Actually Want Explained', 'Maksim Petrov'],
     ]),
-    Greece: makeCountry('\uD83C\uDDEC\uD83C\uDDF7', [39.1, 21.8], 'History, travel, and economic storytelling with a Mediterranean lens.', ['History', 'Travel', 'Economics'], [
+    Greece: makeCountry('Greece', '\uD83C\uDDEC\uD83C\uDDF7', [39.1, 21.8], 'History, travel, and economic storytelling with a Mediterranean lens.', ['History', 'Travel', 'Economics'], [
       ['Why Ancient Places Still Drive Modern Travel Writing', 'Eleni Papadopoulos'],
       ['Economic Stories With a Human Coastline', 'Nikos Andreou'],
     ]),
-    Norway: makeCountry('\uD83C\uDDF3\uD83C\uDDF4', [60.5, 8.5], 'Climate, energy, and calm long-form reporting about systems that work.', ['Climate', 'Energy', 'Travel'], [
+    Norway: makeCountry('Norway', '\uD83C\uDDF3\uD83C\uDDF4', [60.5, 8.5], 'Climate, energy, and calm long-form reporting about systems that work.', ['Climate', 'Energy', 'Travel'], [
       ['Why Nordic Climate Reporting Feels So Actionable', 'Astrid Larsen'],
       ['Energy Transitions Explained Without the Noise', 'Henrik Solberg'],
     ]),
-    Sweden: makeCountry('\uD83C\uDDF8\uD83C\uDDEA', [62, 15], 'Design, startups, and social innovation told with clarity and restraint.', ['Design', 'Startups', 'Culture'], [
+    Sweden: makeCountry('Sweden', '\uD83C\uDDF8\uD83C\uDDEA', [62, 15], 'Design, startups, and social innovation told with clarity and restraint.', ['Design', 'Startups', 'Culture'], [
       ['What Scandinavian Product Writing Gets Right', 'Maja Lindstrom'],
       ['Social Innovation Stories That Readers Trust', 'Oskar Nyberg'],
     ]),

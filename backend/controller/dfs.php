@@ -242,3 +242,56 @@ function get_articles_by_interests(PDO $cnx, array $interestLabels): array
 
     return $rows;
 }
+
+/**
+ * @return array<int, array<string, mixed>>
+ */
+function published_article_graph_rows(PDO $cnx): array
+{
+    $rows = [];
+    foreach (getPublishedArticles($cnx) as $article) {
+        $id = (int) ($article->id ?? 0);
+        if ($id <= 0) {
+            continue;
+        }
+
+        $rows[] = [
+            'id' => $id,
+            'title' => (string) ($article->title ?? ''),
+            'category' => (string) ($article->category ?? ''),
+            'tags' => (string) ($article->tags ?? ''),
+        ];
+    }
+
+    return $rows;
+}
+
+/**
+ * @param int[] $seedArticleIds
+ * @return int[]
+ */
+function expand_recommended_article_ids(PDO $cnx, array $seedArticleIds, int $depth = 3): array
+{
+    $seeds = array_values(array_unique(array_filter(array_map(
+        static fn(mixed $id): int => (int) $id,
+        $seedArticleIds
+    ), static fn(int $id): bool => $id > 0)));
+
+    if ($seeds === []) {
+        return [];
+    }
+
+    $graph = build_category_graph(published_article_graph_rows($cnx));
+    $orderedIds = [];
+
+    foreach ($seeds as $seedId) {
+        foreach (dfs_recommend($graph, $seedId, $depth) as $recommendedId) {
+            $recommendedId = (int) $recommendedId;
+            if ($recommendedId > 0) {
+                $orderedIds[$recommendedId] = true;
+            }
+        }
+    }
+
+    return array_map('intval', array_keys($orderedIds));
+}

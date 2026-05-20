@@ -58,6 +58,9 @@ function _authorMatches(source = {}, author = {}) {
   if (sourceEmail && authorEmail && sourceEmail === authorEmail) {
     return true;
   }
+  if (sourceId !== null || authorId !== null || sourceEmail || authorEmail) {
+    return false;
+  }
   const sourceName = _normalizeIdentity(source?.name || source?.author || source?.pseudo);
   const authorName = _normalizeIdentity(author?.name || author?.author || author?.pseudo);
   return !!(sourceName && authorName && sourceName === authorName);
@@ -88,13 +91,6 @@ function _resolveAuthorProfile(author = {}) {
     bio       = bio    || String(viewedProfile?.bio || '').trim();
     plan      = String(viewedProfile?.plan || plan || 'free');
     isPremium = isPremium || viewedProfile?.plan === 'premium' || !!viewedProfile?.isPremium;
-  }
-
-  const articleMatch = (window.IBlog?.state?.articles || []).find(
-    (article) => _authorMatches(article, author) && article?.authorAvatar
-  );
-  if (articleMatch?.authorAvatar) {
-    avatar = avatar || String(articleMatch.authorAvatar).trim();
   }
 
   return {

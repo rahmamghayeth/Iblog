@@ -91,6 +91,76 @@ function boolFlag(mixed $value): int
     return (int) ($value === '1' || $value === 1 || $value === true || $value === 'true');
 }
 
+function premiumUserWhereClause(): string
+{
+    return "COALESCE(u.isAdmin, 0) = 0
+            AND COALESCE(u.status, 'active') <> 'banned'
+            AND (u.plan = 'premium' OR COALESCE(u.isPremium, 0) = 1)";
+}
+
+function premiumRevenueMembers(PDO $cnx): array
+{
+    ensureStatusColumn($cnx);
+
+    if (subscriptionTableExists($cnx)) {
+        ensureSubscriptionMethodColumn($cnx);
+        $sql = "SELECT
+                    u.id,
+                    u.id AS userId,
+                    u.name,
+                    u.email,
+                    'premium' AS plan,
+                    COALESCE(s.amount, 9.00) AS amount,
+                    COALESCE(s.currency, 'USD') AS currency,
+                    CASE
+                        WHEN COALESCE(s.status, '') = 'cancelled' THEN 'cancelled'
+                        ELSE 'active'
+                    END AS status,
+                    COALESCE(s.method, 'card') AS method,
+                    COALESCE(s.startedAt, u.createdAt) AS started_at,
+                    s.expiresAt AS expires_at
+                FROM users u
+                LEFT JOIN subscription s
+                    ON s.id = (
+                        SELECT s2.id
+                        FROM subscription s2
+                        WHERE s2.userId = u.id
+                        ORDER BY
+                            CASE WHEN s2.status = 'active' THEN 0 ELSE 1 END,
+                            s2.id DESC
+                        LIMIT 1
+                    )
+                WHERE " . premiumUserWhereClause() . "
+                ORDER BY
+                    CASE
+                        WHEN COALESCE(s.status, '') = 'active' THEN 0
+                        ELSE 1
+                    END,
+                    COALESCE(s.startedAt, u.createdAt) DESC,
+                    u.id DESC";
+
+        return $cnx->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    $sql = "SELECT
+                u.id,
+                u.id AS userId,
+                u.name,
+                u.email,
+                'premium' AS plan,
+                9.00 AS amount,
+                'USD' AS currency,
+                'active' AS status,
+                'card' AS method,
+                u.createdAt AS started_at,
+                NULL AS expires_at
+            FROM users u
+            WHERE " . premiumUserWhereClause() . "
+            ORDER BY u.createdAt DESC, u.id DESC";
+
+    return $cnx->query($sql)->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
+
 try {
     switch ($action) {
         case 'get_users':
@@ -124,16 +194,27 @@ try {
 
         case 'get_stats':
             $totalUsers = (int) $cnx->query("SELECT COUNT(*) FROM users")->fetchColumn();
-            $premiumCount = (int) $cnx->query("SELECT COUNT(*) FROM users WHERE plan = 'premium'")->fetchColumn();
             $totalArticles = 0;
-            $activeSubs = 0;
+            $premiumMembers = premiumRevenueMembers($cnx);
+            $premiumCount = count($premiumMembers);
+            $activeSubs = count(array_filter(
+                $premiumMembers,
+                static fn (array $member): bool => strtolower((string) ($member['status'] ?? 'active')) === 'active'
+            ));
+            $monthlyRevenueValue = array_reduce(
+                $premiumMembers,
+                static function (float $carry, array $member): float {
+                    if (strtolower((string) ($member['status'] ?? 'active')) !== 'active') {
+                        return $carry;
+                    }
+
+                    return $carry + (float) ($member['amount'] ?? 0);
+                },
+                0.0
+            );
 
             if (articleTableExists($cnx)) {
                 $totalArticles = (int) $cnx->query("SELECT COUNT(*) FROM article")->fetchColumn();
-            }
-
-            if (subscriptionTableExists($cnx)) {
-                $activeSubs = (int) $cnx->query("SELECT COUNT(*) FROM subscription WHERE status = 'active'")->fetchColumn();
             }
 
             echo json_encode([
@@ -141,7 +222,8 @@ try {
                 'total_articles' => $totalArticles,
                 'premium_count' => $premiumCount,
                 'active_subscriptions' => $activeSubs,
-                'monthly_revenue' => '$' . number_format(($activeSubs > 0 ? $activeSubs : $premiumCount) * 9),
+                'monthly_revenue' => '$' . number_format($monthlyRevenueValue, 2),
+                'monthly_revenue_value' => $monthlyRevenueValue,
             ]);
             break;
 
@@ -168,30 +250,7 @@ try {
             break;
 
         case 'get_revenue':
-            if (subscriptionTableExists($cnx)) {
-                ensureSubscriptionMethodColumn($cnx);
-                $stmt = $cnx->query(
-                    "SELECT s.id, s.userId, s.plan, s.amount, s.currency, s.status,
-                            COALESCE(s.method, 'card') AS method,
-                            s.startedAt AS started_at, s.expiresAt AS expires_at,
-                            u.name, u.email
-                     FROM subscription s
-                     LEFT JOIN users u ON u.id = s.userId
-                     ORDER BY s.id DESC"
-                );
-                echo json_encode(['members' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
-                break;
-            }
-
-            $fallback = $cnx->query(
-                "SELECT id, id AS userId, name, email, createdAt AS started_at,
-                        NULL AS expires_at, 'premium' AS plan, 9.00 AS amount, 'USD' AS currency,
-                        'active' AS status, 'card' AS method
-                 FROM users
-                 WHERE plan = 'premium'
-                 ORDER BY id DESC"
-            )->fetchAll(PDO::FETCH_ASSOC);
-            echo json_encode(['members' => $fallback]);
+            echo json_encode(['members' => premiumRevenueMembers($cnx)]);
             break;
 
         case 'get_subscriptions':

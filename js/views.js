@@ -285,13 +285,6 @@ IBlog.Views = (() => {
     </div>
   </div>`;
 
-      if (existing) {
-        return `
-<div class="${cardClass}" onclick="IBlog.Feed.openReader(${existing.id})">
-  ${content}
-</div>`;
-      }
-
       const tempId = `map_${index}_${safeCountry}`;
       return `
 <div class="${cardClass}" onclick="IBlog.Views.openMapArticle('${tempId}', '${country}', ${index})">
@@ -359,7 +352,11 @@ IBlog.Views = (() => {
     };
 
     const existing = IBlog.state.articles.find(x => x.id === id);
-    if (!existing) IBlog.state.articles.push(tempArticle);
+    if (existing) {
+      Object.assign(existing, tempArticle);
+    } else {
+      IBlog.state.articles.push(tempArticle);
+    }
 
     IBlog.Feed.openReader(id);
   }
