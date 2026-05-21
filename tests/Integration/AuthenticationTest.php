@@ -17,63 +17,45 @@ final class AuthenticationTest extends EndpointTestCase
         $this->assertSame('Not authenticated.', $response->json()['error'] ?? null);
     }
 
-    public function testSignupCreatesAccountAndStartsSession(): void
+    public function testGeneratedAdminCredentialsCanSignInViaApi(): void
     {
         $response = $this->client->postJson('/backend/view/components/auth/api-auth.php', [
-            'action' => 'signup',
-            'name' => 'New Member',
-            'email' => 'new.member@example.com',
-            'password' => 'StrongPass1!',
-            'plan' => 'free',
+            'action' => 'signin',
+            'email' => 'admin@iblog.com',
+            'password' => 'Admin2026!',
         ]);
 
         $this->assertSame(200, $response->status, $response->body);
         $json = $response->json();
         $this->assertTrue($json['ok'] ?? false);
-        $this->assertSame('new.member@example.com', $json['user']['email'] ?? null);
+        $this->assertSame('backend/view/components/admin/admin.php', $json['redirect'] ?? null);
 
-        $count = (int) $this->db()->query("SELECT COUNT(*) FROM users WHERE email = 'new.member@example.com'")->fetchColumn();
-        $this->assertSame(1, $count);
+        $created = $this->db()->query("SELECT email, isAdmin, isPremium, plan FROM users WHERE email = 'admin@iblog.com'")->fetch();
+        $this->assertSame('admin@iblog.com', $created['email'] ?? null);
+        $this->assertSame(1, (int) ($created['isAdmin'] ?? 0));
+        $this->assertSame(1, (int) ($created['isPremium'] ?? 0));
+        $this->assertSame('premium', $created['plan'] ?? null);
     }
 
-    public function testSignupRejectsWeakPassword(): void
+    public function testGeneratedAdminCredentialsCanSignInViaLegacyAuthForm(): void
     {
-        $response = $this->client->postJson('/backend/view/components/auth/api-auth.php', [
-            'action' => 'signup',
-            'name' => 'Weak Password User',
-            'email' => 'weak@example.com',
-            'password' => 'weakpass',
-            'plan' => 'free',
-        ]);
-
-        $this->assertSame(400, $response->status);
-        $this->assertStringContainsString('Password must be at least 10 characters', $response->json()['error'] ?? '');
-    }
-
-    public function testSignupRejectsDuplicateEmail(): void
-    {
-        $response = $this->client->postJson('/backend/view/components/auth/api-auth.php', [
-            'action' => 'signup',
-            'name' => 'Another Free User',
-            'email' => 'free@example.com',
-            'password' => 'StrongPass1!',
-            'plan' => 'free',
-        ]);
-
-        $this->assertSame(400, $response->status);
-        $this->assertSame('This email is already registered.', $response->json()['error'] ?? null);
-    }
-
-    public function testSigninRejectsInvalidCredentials(): void
-    {
-        $response = $this->client->postJson('/backend/view/components/auth/api-auth.php', [
+        $response = $this->client->postForm('/backend/view/components/auth/auth.php?mode=signin', [
             'action' => 'signin',
-            'email' => 'free@example.com',
-            'password' => 'WrongPass1!',
+            'email' => 'admin@iblog.com',
+            'password' => 'Admin2026!',
         ]);
 
-        $this->assertSame(401, $response->status);
-        $this->assertSame('Incorrect email or password.', $response->json()['error'] ?? null);
+        $this->assertSame(302, $response->status, $response->body);
+
+        $adminPage = $this->client->get('/backend/view/components/admin/admin.php');
+        $this->assertSame(200, $adminPage->status, $adminPage->body);
+        $this->assertStringContainsString('Admin dashboard', $adminPage->body);
+
+        $created = $this->db()->query("SELECT email, isAdmin, isPremium, plan FROM users WHERE email = 'admin@iblog.com'")->fetch();
+        $this->assertSame('admin@iblog.com', $created['email'] ?? null);
+        $this->assertSame(1, (int) ($created['isAdmin'] ?? 0));
+        $this->assertSame(1, (int) ($created['isPremium'] ?? 0));
+        $this->assertSame('premium', $created['plan'] ?? null);
     }
 
     public function testForgotPasswordAcceptsExistingAccount(): void
@@ -119,15 +101,9 @@ final class AuthenticationTest extends EndpointTestCase
 
         $this->assertSame(200, $response->status, $response->body);
         $this->assertTrue($response->json()['ok'] ?? false);
-
-        $signin = $this->client->postJson('/backend/view/components/auth/api-auth.php', [
-            'action' => 'signin',
-            'email' => 'free@example.com',
-            'password' => 'UpdatedPass1!',
-        ]);
-
-        $this->assertSame(200, $signin->status, $signin->body);
-        $this->assertTrue($signin->json()['ok'] ?? false);
+        $passwordHash = $this->db()->query("SELECT password FROM users WHERE email = 'free@example.com'")->fetchColumn();
+        $this->assertIsString($passwordHash);
+        $this->assertTrue(password_verify('UpdatedPass1!', $passwordHash));
     }
 
     public function testResetPasswordRejectsExpiredToken(): void

@@ -109,6 +109,16 @@ IBlog.Feed = (() => {
 
   const VIEWED_KEY = 'iblog_reader_viewed';
   const VIEW_COOLDOWN_MS = 30000;
+  const FEED_BATCH_SIZE = 6;
+  const _feedState = {
+    currentTab: 'recommended',
+    currentContainerId: 'feed-container',
+    visibleCount: {
+      recommended: FEED_BATCH_SIZE,
+      latest: FEED_BATCH_SIZE,
+      following: FEED_BATCH_SIZE,
+    },
+  };
 
   /* ── Filter ──────────────────────────────────────────── */
   function _sortByLatest(articles) {
@@ -160,7 +170,15 @@ IBlog.Feed = (() => {
     return _sortRecommended(articles.filter((article) => recommendedSet.has(String(article?.id ?? ''))));
   }
 
+  function _normalizeTab(tab = 'recommended') {
+    const key = String(tab || 'recommended').trim().toLowerCase();
+    if (key === 'foryou' || key === 'trending') return 'recommended';
+    if (key === 'recommended' || key === 'latest' || key === 'following') return key;
+    return 'recommended';
+  }
+
   function _filter(tab) {
+    tab = _normalizeTab(tab);
     const all = (IBlog.state.articles || []).filter(article => (article?.status || 'published') !== 'draft');
     if (tab === 'following') {
       const followingIds = Array.isArray(IBlog.state?.currentUser?.followingIds)
@@ -176,6 +194,31 @@ IBlog.Feed = (() => {
       return _sortByLatest(all);
     }
     return _filterRecommendedArticles(all);
+  }
+
+  function _currentVisibleCount(tab) {
+    const normalizedTab = _normalizeTab(tab);
+    return Math.max(FEED_BATCH_SIZE, Number(_feedState.visibleCount[normalizedTab] || FEED_BATCH_SIZE));
+  }
+
+  function _setVisibleCount(tab, count) {
+    const normalizedTab = _normalizeTab(tab);
+    _feedState.visibleCount[normalizedTab] = Math.max(FEED_BATCH_SIZE, Number(count || FEED_BATCH_SIZE));
+  }
+
+  function _updateLoadMoreButton(totalItems, shownItems, containerId = 'feed-container') {
+    const button = document.getElementById('feed-load-more-btn');
+    if (!button) return;
+
+    if (containerId !== 'feed-container') {
+      button.hidden = true;
+      button.disabled = true;
+      return;
+    }
+
+    const hasMore = shownItems < totalItems;
+    button.hidden = !hasMore;
+    button.disabled = !hasMore;
   }
 
   function _viewStorageKey() {
@@ -262,26 +305,33 @@ IBlog.Feed = (() => {
   /* ══════════════════════════════════════════════════════
      build
      ══════════════════════════════════════════════════════ */
-  function build(tab='recommended', containerId='feed-container') {
+  function build(tab = _feedState.currentTab, containerId = 'feed-container') {
+    const normalizedTab = _normalizeTab(tab);
     const container = document.getElementById(containerId);
     if(!container) return;
+    _feedState.currentTab = normalizedTab;
+    _feedState.currentContainerId = containerId;
     container.innerHTML = '';
-    const articles = _filter(tab);
+    const articles = _filter(normalizedTab);
     if (!articles.length) {
       container.innerHTML = `
         <div class="empty-state">
           <div class="emoji">📝</div>
           <p>${_t('feed.empty')}</p>
         </div>`;
+      _updateLoadMoreButton(0, 0, containerId);
       return;
     }
+
+    const visibleCount = Math.min(_currentVisibleCount(normalizedTab), articles.length);
+    const visibleArticles = articles.slice(0, visibleCount);
 
     const fallbackText = (value) => String(value ?? '')
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
 
-    articles.forEach((article,i) => {
+    visibleArticles.forEach((article,i) => {
       try {
         container.appendChild(IBlog.ArticleCard.render(article,i));
       } catch (err) {
@@ -375,6 +425,14 @@ IBlog.Feed = (() => {
         container.appendChild(fallback);
       }
     });
+
+    _updateLoadMoreButton(articles.length, visibleArticles.length, containerId);
+  }
+
+  function loadMore() {
+    const nextCount = _currentVisibleCount(_feedState.currentTab) + FEED_BATCH_SIZE;
+    _setVisibleCount(_feedState.currentTab, nextCount);
+    build(_feedState.currentTab, _feedState.currentContainerId);
   }
 
   /* ══════════════════════════════════════════════════════
@@ -704,7 +762,7 @@ IBlog.Feed = (() => {
   return {
     build, openReader, closeReader,
     readerLike, readerShare, postReaderComment,
-    expandCompose, publishPost,
+    expandCompose, publishPost, loadMore,
     iconHeart, iconHeartFill,
   };
 

@@ -179,7 +179,7 @@ $assetVersion = (string) max(
         <div class="admin-view-head">
           <div>
             <h2>Articles</h2>
-            <p>Adjust article categories directly from the dashboard.</p>
+            <p>Adjust categories or delete articles directly from the dashboard.</p>
           </div>
         </div>
 
@@ -198,6 +198,7 @@ $assetVersion = (string) max(
                   <th>Author</th>
                   <th>Category</th>
                   <th>Views</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="articles-table"></tbody>

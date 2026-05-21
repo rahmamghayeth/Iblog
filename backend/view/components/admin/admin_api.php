@@ -27,6 +27,7 @@ if ($backendPath === false || !file_exists($backendPath . '/config/database.php'
 
 require_once $backendPath . '/config/database.php';
 require_once $backendPath . '/controller/UserController.php';
+require_once $backendPath . '/controller/ArticleController.php';
 
 if (!isset($cnx) || !($cnx instanceof PDO)) {
     $cnx = getDatabaseConnection();
@@ -84,6 +85,26 @@ function ensureSubscriptionMethodColumn(PDO $db): void
     } catch (PDOException) {
         $db->exec("ALTER TABLE subscription ADD COLUMN method VARCHAR(30) NOT NULL DEFAULT 'card'");
     }
+}
+
+function hasActiveSubscriptionRecord(PDO $db, int $userId): bool
+{
+    if ($userId <= 0 || !subscriptionTableExists($db)) {
+        return false;
+    }
+
+    ensureSubscriptionMethodColumn($db);
+
+    $stmt = $db->prepare(
+        "SELECT 1
+         FROM subscription
+         WHERE userId = :userId
+           AND COALESCE(status, 'active') = 'active'
+         LIMIT 1"
+    );
+    $stmt->execute([':userId' => $userId]);
+
+    return (bool) $stmt->fetchColumn();
 }
 
 function boolFlag(mixed $value): int
@@ -173,7 +194,12 @@ try {
                                COALESCE(u.status, 'active') AS status,
                                u.createdAt,
                                u.createdAt AS created_at,
-                               (SELECT COUNT(*) FROM article a WHERE a.userId = u.id) AS article_count
+                               (
+                                   SELECT COUNT(*)
+                                   FROM article a
+                                   WHERE a.userId = u.id
+                                     AND COALESCE(a.status, 'draft') <> 'deleted'
+                               ) AS article_count
                         FROM users u
                         ORDER BY u.id DESC";
             } else {
@@ -214,7 +240,11 @@ try {
             );
 
             if (articleTableExists($cnx)) {
-                $totalArticles = (int) $cnx->query("SELECT COUNT(*) FROM article")->fetchColumn();
+                $totalArticles = (int) $cnx->query(
+                    "SELECT COUNT(*)
+                     FROM article
+                     WHERE COALESCE(status, 'draft') <> 'deleted'"
+                )->fetchColumn();
             }
 
             echo json_encode([
@@ -244,6 +274,7 @@ try {
                         u.id AS author_id
                  FROM article a
                  LEFT JOIN users u ON u.id = a.userId
+                 WHERE COALESCE(a.status, 'draft') <> 'deleted'
                  ORDER BY a.createdAt DESC"
             );
             echo json_encode(['articles' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
@@ -299,6 +330,13 @@ try {
                 'isAdmin' => $isAdmin,
             ]);
 
+            if ($ok && $isPremium === 1) {
+                $createdUser = getUserByEmail($cnx, $email);
+                if ($createdUser) {
+                    upgradeToPremium($cnx, (int) ($createdUser['id'] ?? 0), 'admin_grant', 9.0);
+                }
+            }
+
             echo json_encode($ok ? ['ok' => true] : ['ok' => false, 'error' => 'Unable to create user']);
             break;
 
@@ -328,6 +366,9 @@ try {
                 break;
             }
 
+            $wasPremium = strtolower((string) ($existing['plan'] ?? 'free')) === 'premium'
+                || (int) ($existing['isPremium'] ?? 0) === 1;
+
             $ok = updateUser($cnx, $id, [
                 'name' => $name,
                 'email' => $email,
@@ -336,6 +377,10 @@ try {
                 'isPremium' => $isPremium,
                 'isAdmin' => $isAdmin,
             ]);
+
+            if ($ok && $isPremium === 1 && (!$wasPremium || !hasActiveSubscriptionRecord($cnx, $id))) {
+                upgradeToPremium($cnx, $id, 'admin_grant', 9.0);
+            }
 
             echo json_encode($ok ? ['ok' => true] : ['ok' => false, 'error' => 'Unable to update user']);
             break;
@@ -405,6 +450,24 @@ try {
 
             $cnx->prepare("UPDATE article SET category = ? WHERE id = ?")->execute([$cat, $id]);
             echo json_encode(['ok' => true]);
+            break;
+
+        case 'delete_article':
+            $id = (int) ($_POST['id'] ?? 0);
+
+            if ($id <= 0 || !articleTableExists($cnx)) {
+                echo json_encode(['error' => 'Parametres invalides']);
+                break;
+            }
+
+            $article = getArticleById($cnx, $id);
+            if ($article === null) {
+                echo json_encode(['error' => 'Article introuvable']);
+                break;
+            }
+
+            $ok = deleteArticle($cnx, $id);
+            echo json_encode($ok ? ['ok' => true, 'deleted' => true, 'id' => $id] : ['ok' => false, 'error' => 'Unable to delete article']);
             break;
 
         case 'cancel_sub':

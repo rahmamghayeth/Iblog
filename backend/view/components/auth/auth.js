@@ -7,6 +7,7 @@
   const EYE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const EYE_OFF_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
   const ARROW = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
+  let pendingPremiumSignup = null;
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
@@ -79,6 +80,25 @@
       sessionStorage.setItem('user', JSON.stringify(user));
       localStorage.setItem('user', JSON.stringify(user));
     }
+  }
+
+  function _buildPendingPremiumSignup(name, email, password) {
+    return {
+      name,
+      email,
+      password,
+      pseudo: '',
+      bio: '',
+      avatar: '',
+      cover: '',
+      fieldIds: [],
+      subjectIds: [],
+      interestIds: [],
+      fields: [],
+      subjects: [],
+      onboardingComplete: false,
+      initial: name ? name[0].toUpperCase() : 'A',
+    };
   }
 
   function _clearAuthFields() {
@@ -156,6 +176,7 @@
     });
     document.querySelectorAll('.field-err').forEach(err => err.classList.remove('show'));
     sessionStorage.removeItem('selectedPlan');
+    pendingPremiumSignup = null;
     renderPasswordRules('');
     switchPayTab(null, 'card');
   }
@@ -265,19 +286,21 @@
     if (!valid) return;
 
     const btn = document.querySelector('#modal-signup .btn-primary');
-    if (btn) { btn.textContent = 'Creating account...'; btn.disabled = true; }
+    if (btn) { btn.textContent = plan === 'premium' ? 'Preparing payment...' : 'Creating account...'; btn.disabled = true; }
+
+    if (plan === 'premium') {
+      pendingPremiumSignup = _buildPendingPremiumSignup(name, email, password);
+      document.getElementById('modal-signup')?.classList.remove('active');
+      document.getElementById('modal-premium')?.classList.add('active');
+      showPayment();
+      if (btn) { btn.textContent = 'Create Account'; btn.disabled = false; }
+      return;
+    }
 
     apiFetch({ action: 'signup', name, email, password, plan })
       .then(data => {
         _applyUser(data.user);
-        if (plan === 'premium') {
-          sessionStorage.setItem('pendingUser', JSON.stringify(data.user));
-          document.getElementById('modal-signup')?.classList.remove('active');
-          document.getElementById('modal-premium')?.classList.add('active');
-          showPayment();
-        } else {
-          launchOnboarding(data.user);
-        }
+        launchOnboarding(data.user);
       })
       .catch(err => {
         IBlog.utils?.toast(err.message.substring(0, 100), 'error');
@@ -303,8 +326,13 @@
         }
         _applyUser(data.user);
         const syncedUser = await window.IBlogSession?.syncFromServer?.({ clearOnFailure: true });
+        const nextUser = syncedUser || data.user;
         if (syncedUser) {
           _applyUser(syncedUser);
+        }
+        if (nextUser?.onboardingComplete === false) {
+          launchOnboarding(nextUser);
+          return;
         }
         closeAllModals();
         goToDashboard(window._pendingArticleId || null);
@@ -381,12 +409,53 @@
   };
 
   function processSuccess(method = 'card') {
-    const raw = sessionStorage.getItem('pendingUser') || sessionStorage.getItem('user');
-    const user = raw ? JSON.parse(raw) : { name: 'New Member', email: '' };
-    apiFetch({ action: 'upgrade_to_premium', method, amount: 9 })
+    const currentUser = window.IBlogSession?.getUser?.();
+    const signupSeed = pendingPremiumSignup ? { ...pendingPremiumSignup } : null;
+    const request = pendingPremiumSignup
+      ? {
+          action: 'signup_premium',
+          name: pendingPremiumSignup.name,
+          email: pendingPremiumSignup.email,
+          password: pendingPremiumSignup.password,
+          method,
+          amount: 9,
+        }
+      : {
+          action: 'upgrade_to_premium',
+          method,
+          amount: 9,
+        };
+    const fallbackUser = signupSeed
+      ? {
+          ...signupSeed,
+          plan: 'premium',
+          isPremium: true,
+        }
+      : (currentUser || { name: 'New Member', email: '' });
+
+    apiFetch(request)
       .then(data => {
-        const updatedUser = { ...user, ...data.user, isPremium: true, plan: 'premium' };
-        sessionStorage.removeItem('pendingUser');
+        const updatedUser = signupSeed
+          ? {
+              ...data.user,
+              name: signupSeed.name,
+              email: signupSeed.email,
+              initial: signupSeed.initial,
+              pseudo: signupSeed.pseudo,
+              bio: signupSeed.bio,
+              avatar: signupSeed.avatar,
+              cover: signupSeed.cover,
+              fieldIds: [],
+              subjectIds: [],
+              interestIds: [],
+              fields: [],
+              subjects: [],
+              onboardingComplete: false,
+              isPremium: true,
+              plan: 'premium',
+            }
+          : { ...fallbackUser, ...data.user, isPremium: true, plan: 'premium' };
+        pendingPremiumSignup = null;
         _applyUser(updatedUser);
         document.getElementById('premium-step-payment')?.style.setProperty('display', 'none');
         document.getElementById('premium-step-success')?.style.setProperty('display', 'block');

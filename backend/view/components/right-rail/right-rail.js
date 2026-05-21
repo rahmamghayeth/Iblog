@@ -66,12 +66,25 @@ function _authorMatches(source = {}, author = {}) {
   return !!(sourceName && authorName && sourceName === authorName);
 }
 
+function _findAuthorArticle(author = {}) {
+  const articles = Array.isArray(window.IBlog?.state?.articles)
+    ? window.IBlog.state.articles
+    : [];
+
+  return articles.find((article) => _authorMatches(article, author)) || null;
+}
+
 function _resolveAuthorProfile(author = {}) {
   let avatar    = String(author?.avatar || '').trim();
   let cover     = String(author?.cover  || '').trim();
   let bio       = String(author?.bio    || '').trim();
   let plan      = author?.isPremium ? 'premium' : 'free';
   let isPremium = !!author?.isPremium;
+  const articleMatch = _findAuthorArticle(author);
+
+  if (articleMatch) {
+    avatar = avatar || String(articleMatch?.authorAvatar || '').trim();
+  }
 
   const current = window.IBlog?.state?.currentUser || null;
   if (_authorMatches(current, author)) {

@@ -150,8 +150,10 @@ function assetUrl(string $path): string
             </div>
             <div id="feed-container"></div>
             <button
+              id="feed-load-more-btn"
               class="load-more-btn"
-              onclick="IBlog.utils.toast('All articles loaded!')"
+              onclick="IBlog.Feed.loadMore()"
+              hidden
             >
               ⬇ Load more articles
             </button>

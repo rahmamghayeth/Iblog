@@ -301,6 +301,20 @@ const IBlogAdmin = (() => {
     );
   }
 
+  async function deleteArticle(id, title) {
+    confirmDialog(
+      'Delete article',
+      `Remove <strong>${esc(title)}</strong> from the platform?`,
+      async () => {
+        await api('delete_article', { id });
+        await Promise.all([loadArticles(), loadStats(), loadUsers()]);
+        buildActivityLog();
+        buildCharts();
+        toast('Article deleted', 'success');
+      }
+    );
+  }
+
   async function loadArticles() {
     const data = await api('get_articles');
     articles = data.articles ?? [];
@@ -323,7 +337,7 @@ const IBlogAdmin = (() => {
     }
 
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="4" class="admin-empty-row">No articles found.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="admin-empty-row">No articles found.</td></tr>';
       return;
     }
 
@@ -333,6 +347,7 @@ const IBlogAdmin = (() => {
       const date = article.created_at
         ? new Date(article.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
         : '-';
+      const titleArg = escJs(title);
 
       return `
         <tr>
@@ -354,6 +369,11 @@ const IBlogAdmin = (() => {
             </select>
           </td>
           <td>${Number(article.views || 0).toLocaleString()}</td>
+          <td>
+            <div class="admin-actions">
+              <button class="admin-btn admin-btn-danger" onclick="IBlogAdmin.deleteArticle(${Number(article.id)}, '${titleArg}')">Delete</button>
+            </div>
+          </td>
         </tr>
       `;
     }).join('');
@@ -593,6 +613,7 @@ const IBlogAdmin = (() => {
     closeUserModal,
     toggleBan,
     deleteUser,
+    deleteArticle,
     filterArticles,
     changeCat,
     cancelSubscription,

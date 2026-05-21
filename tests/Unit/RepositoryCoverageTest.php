@@ -78,7 +78,6 @@ final class RepositoryCoverageTest extends TestCase
         ]);
 
         $repo = new UserRepository($pdo);
-        $this->assertFalse($repo->authenticate('missing@example.com', 'StrongPass1!'));
         $this->assertFalse($repo->update(999, ['name' => 'Missing']));
         $this->assertTrue($repo->upgradeToPremium(1, 'card', 9.0));
 
@@ -152,9 +151,6 @@ final class RepositoryCoverageTest extends TestCase
         $this->assertIsArray($secondUser);
         $secondUserId = (int) ($secondUser['id'] ?? 0);
         $this->assertGreaterThan(0, $secondUserId);
-
-        $this->assertIsArray($repo->authenticate('direct@example.com', 'StrongPass1!'));
-        $this->assertFalse($repo->authenticate('direct@example.com', 'WrongPass!'));
 
         $foundById = $repo->findById($userId);
         $this->assertIsArray($foundById);

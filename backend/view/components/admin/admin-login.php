@@ -32,68 +32,9 @@ if ($backendPath === false || !file_exists($backendPath . '/config/database.php'
 require_once $backendPath . '/config/database.php';
 require_once $backendPath . '/model/users.php';
 require_once $backendPath . '/controller/UserController.php';
+require_once __DIR__ . '/admin-auth-support.php';
 
 $error = !($cnx instanceof PDO) ? (databaseConnectionError() ?? 'Database connection failed.') : '';
-
-function adminLoginEmail(): string
-{
-    return 'admin@iblog.com';
-}
-
-function adminLoginPrimaryPassword(): string
-{
-    return 'Admin2026!';
-}
-
-function adminLoginAcceptedPasswords(): array
-{
-    return [
-        adminLoginPrimaryPassword(),
-        'admin2026',
-    ];
-}
-
-function isAdminLoginEmail(string $email): bool
-{
-    return strtolower(trim($email)) === adminLoginEmail();
-}
-
-function ensureAdminLoginAccount(PDO $cnx, bool $resetPassword = false): array|false
-{
-    $email = adminLoginEmail();
-    $user = getUserByEmail($cnx, $email);
-    $payload = [
-        'name' => trim((string) ($user['name'] ?? '')) ?: 'IBlog Admin',
-        'email' => $email,
-        'password' => adminLoginPrimaryPassword(),
-        'plan' => 'premium',
-        'isPremium' => 1,
-        'isAdmin' => 1,
-    ];
-
-    if ($user === false) {
-        if (!AddUser($cnx, $payload)) {
-            return false;
-        }
-
-        return getUserByEmail($cnx, $email);
-    }
-
-    $needsUpdate = $resetPassword
-        || (int) ($user['isAdmin'] ?? 0) !== 1
-        || (int) ($user['isPremium'] ?? 0) !== 1
-        || strtolower((string) ($user['plan'] ?? 'free')) !== 'premium';
-
-    if ($needsUpdate) {
-        if (!updateUser($cnx, (int) $user['id'], $payload)) {
-            return false;
-        }
-
-        return getUserByEmail($cnx, $email);
-    }
-
-    return $user;
-}
 
 if ($error === '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $email    = trim((string) ($_POST['email']    ?? ''));
@@ -113,7 +54,7 @@ if ($error === '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
                 isAdminLoginEmail($email)
                 && in_array($password, adminLoginAcceptedPasswords(), true)
             ) {
-                $adminFallbackUser = ensureAdminLoginAccount($cnx, true);
+                $adminFallbackUser = ensureAdminAccount($cnx, true);
                 if ($adminFallbackUser !== false) {
                     $user = $adminFallbackUser;
                 }

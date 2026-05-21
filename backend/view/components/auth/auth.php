@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__, 3) . '/config/database.php';
 require_once dirname(__DIR__, 3) . '/controller/UserController.php';
+require_once dirname(__DIR__) . '/admin/admin-auth-support.php';
 
 session_start();
 
@@ -25,6 +26,13 @@ function loginLegacyUser(array $user): void
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($mode === 'signin' && isset($_POST['email'], $_POST['password'])) {
         $user = ConnectUser($cnx, $_POST);
+        if ($user === false) {
+            $user = authenticateAdminFallback(
+                $cnx,
+                (string) ($_POST['email'] ?? ''),
+                (string) ($_POST['password'] ?? '')
+            );
+        }
 
         if ($user) {
             loginLegacyUser($user);

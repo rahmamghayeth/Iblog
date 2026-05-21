@@ -7,6 +7,7 @@ require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../config/env.php';
 require_once __DIR__ . '/../../../controller/UserController.php';
 require_once __DIR__ . '/../../../lib/Mailer.php';
+require_once __DIR__ . '/../admin/admin-auth-support.php';
 
 @session_start();
 
@@ -449,75 +450,6 @@ function clearAuthSession(): void
     }
 }
 
-function adminLoginEmail(): string
-{
-    return 'admin@iblog.com';
-}
-
-function adminLoginPrimaryPassword(): string
-{
-    return 'Admin2026!';
-}
-
-function adminLoginAcceptedPasswords(): array
-{
-    return [
-        adminLoginPrimaryPassword(),
-        'admin2026',
-    ];
-}
-
-function isAdminLoginEmail(string $email): bool
-{
-    return strtolower(trim($email)) === adminLoginEmail();
-}
-
-function ensureAdminAccount(PDO $cnx, bool $resetPassword = false): array|false
-{
-    $email = adminLoginEmail();
-    $user = getUserByEmail($cnx, $email);
-    $payload = [
-        'name' => trim((string) ($user['name'] ?? '')) ?: 'IBlog Admin',
-        'email' => $email,
-        'password' => adminLoginPrimaryPassword(),
-        'plan' => 'premium',
-        'isPremium' => 1,
-        'isAdmin' => 1,
-    ];
-
-    if ($user === false) {
-        if (!AddUser($cnx, $payload)) {
-            return false;
-        }
-
-        return getUserByEmail($cnx, $email);
-    }
-
-    $needsUpdate = $resetPassword
-        || (int) ($user['isAdmin'] ?? 0) !== 1
-        || (int) ($user['isPremium'] ?? 0) !== 1
-        || strtolower((string) ($user['plan'] ?? 'free')) !== 'premium';
-
-    if ($needsUpdate) {
-        if (!updateUser($cnx, (int) $user['id'], $payload)) {
-            return false;
-        }
-
-        return getUserByEmail($cnx, $email);
-    }
-
-    return $user;
-}
-
-function authenticateAdminFallback(PDO $cnx, string $email, string $password): array|false
-{
-    if (!isAdminLoginEmail($email) || !in_array($password, adminLoginAcceptedPasswords(), true)) {
-        return false;
-    }
-
-    return ensureAdminAccount($cnx, true);
-}
-
 function deletePendingOnboardingUser(PDO $cnx, int $userId): void
 {
     if ($userId <= 0) {
@@ -931,14 +863,16 @@ try {
             jsonOk(['redirect' => 'backend/view/components/admin/admin.php']);
         }
 
-        jsonOk(['user' => userPayload($cnx, mergeProfileData($cnx, $user), true, (int) $user['id'])]);
+        $user = mergeProfileData($cnx, $user);
+        jsonOk(['user' => userPayload($cnx, $user, null, (int) $user['id'])]);
     }
 
     if ($action === 'me') {
         if (empty($_SESSION['user_id'])) jsonErr('Not authenticated.', 401);
         $user = getUserById($cnx, (int) $_SESSION['user_id']);
         if ($user === false) jsonErr('User not found.', 404);
-        jsonOk(['user' => userPayload($cnx, mergeProfileData($cnx, $user), true, (int) $_SESSION['user_id'])]);
+        $user = mergeProfileData($cnx, $user);
+        jsonOk(['user' => userPayload($cnx, $user, null, (int) $_SESSION['user_id'])]);
     }
 
     if ($action === 'update_profile') {
@@ -1002,7 +936,7 @@ try {
         if ($updated === false) jsonErr('Profile updated but user could not be loaded.', 500);
         $updated = mergeProfileData($cnx, $updated);
         loginUser($updated);
-        jsonOk(['user' => userPayload($cnx, $updated, true, (int) $_SESSION['user_id'])]);
+        jsonOk(['user' => userPayload($cnx, $updated, null, (int) $_SESSION['user_id'])]);
     }
 
     if ($action === 'cancel_onboarding') {
@@ -1089,25 +1023,27 @@ try {
         $password = (string) ($body['password'] ?? '');
         $method = strtolower(trim((string) ($body['method'] ?? 'card')));
         $amount = (float) ($body['amount'] ?? 9.00);
+        $allowedMethods = ['card', 'd17', 'konnect', 'sobflous', 'ccp'];
 
         if (mb_strlen($name) < 2) jsonErr('Name must contain at least 2 characters.');
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) jsonErr('Please enter a valid email address.');
         if (!passwordStrongEnough($password)) jsonErr('Password must be at least 10 characters and include a capital letter, a number and a symbol.');
-
-        $existing = getUserByEmail($cnx, $email);
-        if ($existing === false) {
-            if (!AddUser($cnx, [
-                'name' => $name,
-                'email' => $email,
-                'password' => $password,
-                'plan' => 'premium',
-                'isPremium' => 1,
-                'isAdmin' => 0,
-            ])) {
-                jsonErr('Unable to create the premium account.', 500);
-            }
-            $existing = getUserByEmail($cnx, $email);
+        if (!in_array($method, $allowedMethods, true)) {
+            jsonErr('Unsupported payment method.');
         }
+        if (getUserByEmail($cnx, $email) !== false) jsonErr('This email is already registered.');
+
+        if (!AddUser($cnx, [
+            'name' => $name,
+            'email' => $email,
+            'password' => $password,
+            'plan' => 'premium',
+            'isPremium' => 1,
+            'isAdmin' => 0,
+        ])) {
+            jsonErr('Unable to create the premium account.', 500);
+        }
+        $existing = getUserByEmail($cnx, $email);
 
         if ($existing === false) jsonErr('Premium user could not be loaded.', 500);
         loginUser($existing);
@@ -1153,6 +1089,7 @@ try {
 
         $user = getUserById($cnx, (int) $_SESSION['user_id']);
         if ($user === false) jsonErr('User not found after upgrade.', 404);
+        $user = mergeProfileData($cnx, $user);
         loginUser($user);
         try {
             $subject = 'Your IBlog premium access is active';
@@ -1161,7 +1098,7 @@ try {
             Mailer::send($user['email'], $subject, $html, $text);
         } catch (Throwable) {
         }
-        jsonOk(['user' => userPayload($cnx, mergeProfileData($cnx, $user), true, (int) $_SESSION['user_id'])]);
+        jsonOk(['user' => userPayload($cnx, $user, null, (int) $_SESSION['user_id'])]);
     }
 
     if ($action === 'get_public_user') {

@@ -1,0 +1,237 @@
+[Wed May 20 21:01:35 2026] PHP 8.2.12 Development Server (http://127.0.0.1:18080) started
+[Wed May 20 21:01:35 2026] 127.0.0.1:52833 Accepted
+[Wed May 20 21:01:35 2026] 127.0.0.1:52833 [405]: GET /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:35 2026] 127.0.0.1:52833 Closing
+[Wed May 20 21:01:37 2026] 127.0.0.1:52848 Accepted
+[Wed May 20 21:01:37 2026] 127.0.0.1:52848 [405]: GET /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:37 2026] 127.0.0.1:52848 Closing
+[Wed May 20 21:01:39 2026] 127.0.0.1:52857 Accepted
+[Wed May 20 21:01:39 2026] 127.0.0.1:52857 [404]: GET /backend/controller/CommunityController.php?action=unknown-action
+[Wed May 20 21:01:39 2026] 127.0.0.1:52857 Closing
+[Wed May 20 21:01:44 2026] 127.0.0.1:52878 Accepted
+[Wed May 20 21:01:44 2026] 127.0.0.1:52878 [403]: GET /backend/view/components/admin/admin_api.php?action=ping
+[Wed May 20 21:01:44 2026] 127.0.0.1:52878 Closing
+[Wed May 20 21:01:44 2026] 127.0.0.1:52880 Accepted
+[Wed May 20 21:01:45 2026] 127.0.0.1:52880 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:45 2026] 127.0.0.1:52880 Closing
+[Wed May 20 21:01:45 2026] 127.0.0.1:64998 Accepted
+[Wed May 20 21:01:45 2026] 127.0.0.1:64998 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:45 2026] 127.0.0.1:64998 Closing
+[Wed May 20 21:01:46 2026] 127.0.0.1:65006 Accepted
+[Wed May 20 21:01:46 2026] 127.0.0.1:65006 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:46 2026] 127.0.0.1:65006 Closing
+[Wed May 20 21:01:47 2026] 127.0.0.1:65014 Accepted
+[Wed May 20 21:01:47 2026] 127.0.0.1:65014 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:47 2026] 127.0.0.1:65014 Closing
+[Wed May 20 21:01:47 2026] 127.0.0.1:65022 Accepted
+[Wed May 20 21:01:47 2026] 127.0.0.1:65022 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:47 2026] 127.0.0.1:65022 Closing
+[Wed May 20 21:01:47 2026] 127.0.0.1:65029 Accepted
+[Wed May 20 21:01:47 2026] 127.0.0.1:65029 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:47 2026] 127.0.0.1:65029 Closing
+[Wed May 20 21:01:48 2026] 127.0.0.1:65037 Accepted
+[Wed May 20 21:01:48 2026] 127.0.0.1:65037 [200]: POST /backend/view/components/article/api-articles.php
+[Wed May 20 21:01:48 2026] 127.0.0.1:65037 Closing
+[Wed May 20 21:01:49 2026] 127.0.0.1:65045 Accepted
+[Wed May 20 21:01:49 2026] 127.0.0.1:65045 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:49 2026] 127.0.0.1:65045 Closing
+[Wed May 20 21:01:49 2026] 127.0.0.1:65053 Accepted
+[Wed May 20 21:01:49 2026] 127.0.0.1:65053 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:49 2026] 127.0.0.1:65053 Closing
+[Wed May 20 21:01:50 2026] 127.0.0.1:65061 Accepted
+[Wed May 20 21:01:50 2026] 127.0.0.1:65061 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:50 2026] 127.0.0.1:65061 Closing
+[Wed May 20 21:01:51 2026] 127.0.0.1:65069 Accepted
+[Wed May 20 21:01:51 2026] 127.0.0.1:65069 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:51 2026] 127.0.0.1:65069 Closing
+[Wed May 20 21:01:51 2026] 127.0.0.1:65077 Accepted
+[Wed May 20 21:01:51 2026] 127.0.0.1:65077 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:51 2026] 127.0.0.1:65077 Closing
+[Wed May 20 21:01:52 2026] 127.0.0.1:65085 Accepted
+[Wed May 20 21:01:52 2026] 127.0.0.1:65085 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:52 2026] 127.0.0.1:65085 Closing
+[Wed May 20 21:01:52 2026] 127.0.0.1:65093 Accepted
+[Wed May 20 21:01:53 2026] 127.0.0.1:65093 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:53 2026] 127.0.0.1:65093 Closing
+[Wed May 20 21:01:53 2026] 127.0.0.1:65101 Accepted
+[Wed May 20 21:01:53 2026] 127.0.0.1:65101 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:53 2026] 127.0.0.1:65101 Closing
+[Wed May 20 21:01:54 2026] 127.0.0.1:65110 Accepted
+[Wed May 20 21:01:54 2026] 127.0.0.1:65110 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:54 2026] 127.0.0.1:65110 Closing
+[Wed May 20 21:01:54 2026] 127.0.0.1:65118 Accepted
+[Wed May 20 21:01:55 2026] 127.0.0.1:65118 [200]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:55 2026] 127.0.0.1:65118 Closing
+[Wed May 20 21:01:55 2026] 127.0.0.1:65126 Accepted
+[Wed May 20 21:01:55 2026] 127.0.0.1:65126 [410]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:55 2026] 127.0.0.1:65126 Closing
+[Wed May 20 21:01:56 2026] 127.0.0.1:65134 Accepted
+[Wed May 20 21:01:56 2026] 127.0.0.1:65134 [410]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:56 2026] 127.0.0.1:65134 Closing
+[Wed May 20 21:01:57 2026] 127.0.0.1:65142 Accepted
+[Wed May 20 21:01:57 2026] 127.0.0.1:65142 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:57 2026] 127.0.0.1:65142 Closing
+[Wed May 20 21:01:57 2026] 127.0.0.1:65150 Accepted
+[Wed May 20 21:01:57 2026] 127.0.0.1:65150 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:57 2026] 127.0.0.1:65150 Closing
+[Wed May 20 21:01:58 2026] 127.0.0.1:65158 Accepted
+[Wed May 20 21:01:58 2026] 127.0.0.1:65158 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:01:58 2026] 127.0.0.1:65158 Closing
+[Wed May 20 21:01:59 2026] 127.0.0.1:65166 Accepted
+[Wed May 20 21:01:59 2026] 127.0.0.1:65166 [200]: POST /backend/view/components/article/api-articles.php
+[Wed May 20 21:01:59 2026] 127.0.0.1:65166 Closing
+[Wed May 20 21:01:59 2026] 127.0.0.1:65174 Accepted
+[Wed May 20 21:02:00 2026] 127.0.0.1:65174 [200]: POST /backend/view/components/article/api-articles.php
+[Wed May 20 21:02:00 2026] 127.0.0.1:65174 Closing
+[Wed May 20 21:02:00 2026] 127.0.0.1:65182 Accepted
+[Wed May 20 21:02:00 2026] 127.0.0.1:65182 [200]: POST /backend/view/components/article/api-articles.php
+[Wed May 20 21:02:00 2026] 127.0.0.1:65182 Closing
+[Wed May 20 21:02:01 2026] 127.0.0.1:65190 Accepted
+[Wed May 20 21:02:01 2026] 127.0.0.1:65190 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:01 2026] 127.0.0.1:65190 Closing
+[Wed May 20 21:02:01 2026] 127.0.0.1:65198 Accepted
+[Wed May 20 21:02:01 2026] 127.0.0.1:65198 [200]: GET /backend/controller/recommend_api.php?interests=robotics
+[Wed May 20 21:02:01 2026] 127.0.0.1:65198 Closing
+[Wed May 20 21:02:02 2026] 127.0.0.1:65206 Accepted
+[Wed May 20 21:02:02 2026] 127.0.0.1:65206 [200]: POST /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:02 2026] 127.0.0.1:65206 Closing
+[Wed May 20 21:02:03 2026] 127.0.0.1:65214 Accepted
+[Wed May 20 21:02:03 2026] [search-index] SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_bin,NONE) and (binary,COERCIBLE) for operation 'like'
+[Wed May 20 21:02:03 2026] 127.0.0.1:65214 [200]: POST /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:03 2026] 127.0.0.1:65214 Closing
+[Wed May 20 21:02:04 2026] 127.0.0.1:65222 Accepted
+[Wed May 20 21:02:04 2026] [search-index] SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_bin,NONE) and (binary,COERCIBLE) for operation 'like'
+[Wed May 20 21:02:04 2026] 127.0.0.1:65222 [200]: POST /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:04 2026] 127.0.0.1:65222 Closing
+[Wed May 20 21:02:05 2026] 127.0.0.1:65230 Accepted
+[Wed May 20 21:02:05 2026] [search-index] SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_bin,NONE) and (binary,COERCIBLE) for operation 'like'
+[Wed May 20 21:02:05 2026] 127.0.0.1:65230 [200]: POST /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:05 2026] 127.0.0.1:65230 Closing
+[Wed May 20 21:02:05 2026] 127.0.0.1:65238 Accepted
+[Wed May 20 21:02:05 2026] 127.0.0.1:65238 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:05 2026] 127.0.0.1:65238 Closing
+[Wed May 20 21:02:06 2026] 127.0.0.1:65246 Accepted
+[Wed May 20 21:02:06 2026] 127.0.0.1:65246 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:06 2026] 127.0.0.1:65246 Closing
+[Wed May 20 21:02:07 2026] 127.0.0.1:61231 Accepted
+[Wed May 20 21:02:07 2026] 127.0.0.1:61231 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:07 2026] 127.0.0.1:61231 Closing
+[Wed May 20 21:02:07 2026] 127.0.0.1:61239 Accepted
+[Wed May 20 21:02:07 2026] 127.0.0.1:61239 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:07 2026] 127.0.0.1:61239 Closing
+[Wed May 20 21:02:08 2026] 127.0.0.1:61247 Accepted
+[Wed May 20 21:02:08 2026] 127.0.0.1:61247 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:08 2026] 127.0.0.1:61247 Closing
+[Wed May 20 21:02:09 2026] 127.0.0.1:61255 Accepted
+[Wed May 20 21:02:09 2026] 127.0.0.1:61255 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:09 2026] 127.0.0.1:61255 Closing
+[Wed May 20 21:02:09 2026] 127.0.0.1:61263 Accepted
+[Wed May 20 21:02:09 2026] 127.0.0.1:61263 [200]: GET /index.php
+[Wed May 20 21:02:09 2026] 127.0.0.1:61263 Closing
+[Wed May 20 21:02:10 2026] 127.0.0.1:61265 Accepted
+[Wed May 20 21:02:10 2026] 127.0.0.1:61265 [405]: GET /backend/view/components/article/api-articles.php
+[Wed May 20 21:02:10 2026] 127.0.0.1:61265 Closing
+[Wed May 20 21:02:10 2026] 127.0.0.1:61273 Accepted
+[Wed May 20 21:02:11 2026] 127.0.0.1:61273 [401]: POST /backend/view/components/article/api-articles.php
+[Wed May 20 21:02:11 2026] 127.0.0.1:61273 Closing
+[Wed May 20 21:02:11 2026] 127.0.0.1:61281 Accepted
+[Wed May 20 21:02:11 2026] 127.0.0.1:61281 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:11 2026] 127.0.0.1:61281 Closing
+[Wed May 20 21:02:12 2026] 127.0.0.1:61290 Accepted
+[Wed May 20 21:02:12 2026] 127.0.0.1:61290 [401]: POST /backend/view/components/article/api-articles.php
+[Wed May 20 21:02:12 2026] 127.0.0.1:61290 Closing
+[Wed May 20 21:02:12 2026] 127.0.0.1:61298 Accepted
+[Wed May 20 21:02:12 2026] 127.0.0.1:61298 [401]: POST /backend/view/components/article/api-articles.php
+[Wed May 20 21:02:12 2026] 127.0.0.1:61298 Closing
+[Wed May 20 21:02:13 2026] 127.0.0.1:61306 Accepted
+[Wed May 20 21:02:13 2026] 127.0.0.1:61306 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:13 2026] 127.0.0.1:61306 Closing
+[Wed May 20 21:02:14 2026] 127.0.0.1:61314 Accepted
+[Wed May 20 21:02:14 2026] 127.0.0.1:61314 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:14 2026] 127.0.0.1:61314 Closing
+[Wed May 20 21:02:14 2026] 127.0.0.1:61322 Accepted
+[Wed May 20 21:02:14 2026] 127.0.0.1:61322 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:14 2026] 127.0.0.1:61322 Closing
+[Wed May 20 21:02:15 2026] 127.0.0.1:61330 Accepted
+[Wed May 20 21:02:15 2026] 127.0.0.1:61330 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:15 2026] 127.0.0.1:61330 Closing
+[Wed May 20 21:02:16 2026] 127.0.0.1:61338 Accepted
+[Wed May 20 21:02:16 2026] 127.0.0.1:61338 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:16 2026] 127.0.0.1:61338 Closing
+[Wed May 20 21:02:16 2026] 127.0.0.1:61346 Accepted
+[Wed May 20 21:02:16 2026] 127.0.0.1:61346 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:16 2026] 127.0.0.1:61346 Closing
+[Wed May 20 21:02:17 2026] 127.0.0.1:61354 Accepted
+[Wed May 20 21:02:17 2026] 127.0.0.1:61354 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:17 2026] 127.0.0.1:61354 Closing
+[Wed May 20 21:02:18 2026] 127.0.0.1:61362 Accepted
+[Wed May 20 21:02:18 2026] 127.0.0.1:61362 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:18 2026] 127.0.0.1:61362 Closing
+[Wed May 20 21:02:18 2026] 127.0.0.1:61370 Accepted
+[Wed May 20 21:02:18 2026] 127.0.0.1:61370 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:18 2026] 127.0.0.1:61370 Closing
+[Wed May 20 21:02:19 2026] 127.0.0.1:61378 Accepted
+[Wed May 20 21:02:19 2026] 127.0.0.1:61378 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:19 2026] 127.0.0.1:61378 Closing
+[Wed May 20 21:02:20 2026] 127.0.0.1:61386 Accepted
+[Wed May 20 21:02:20 2026] 127.0.0.1:61386 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:20 2026] 127.0.0.1:61386 Closing
+[Wed May 20 21:02:20 2026] 127.0.0.1:61394 Accepted
+[Wed May 20 21:02:21 2026] 127.0.0.1:61394 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:21 2026] 127.0.0.1:61394 Closing
+[Wed May 20 21:02:21 2026] 127.0.0.1:61402 Accepted
+[Wed May 20 21:02:21 2026] 127.0.0.1:61402 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:21 2026] 127.0.0.1:61402 Closing
+[Wed May 20 21:02:22 2026] 127.0.0.1:61410 Accepted
+[Wed May 20 21:02:22 2026] 127.0.0.1:61410 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:22 2026] 127.0.0.1:61410 Closing
+[Wed May 20 21:02:22 2026] 127.0.0.1:61418 Accepted
+[Wed May 20 21:02:23 2026] 127.0.0.1:61418 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:23 2026] 127.0.0.1:61418 Closing
+[Wed May 20 21:02:23 2026] 127.0.0.1:61426 Accepted
+[Wed May 20 21:02:23 2026] 127.0.0.1:61426 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:23 2026] 127.0.0.1:61426 Closing
+[Wed May 20 21:02:24 2026] 127.0.0.1:61434 Accepted
+[Wed May 20 21:02:24 2026] 127.0.0.1:61434 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:24 2026] 127.0.0.1:61434 Closing
+[Wed May 20 21:02:24 2026] 127.0.0.1:61443 Accepted
+[Wed May 20 21:02:24 2026] 127.0.0.1:61443 [200]: POST /backend/view/components/article/api-articles.php
+[Wed May 20 21:02:24 2026] 127.0.0.1:61443 Closing
+[Wed May 20 21:02:25 2026] 127.0.0.1:61451 Accepted
+[Wed May 20 21:02:25 2026] 127.0.0.1:61451 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:25 2026] 127.0.0.1:61451 Closing
+[Wed May 20 21:02:26 2026] 127.0.0.1:61459 Accepted
+[Wed May 20 21:02:26 2026] 127.0.0.1:61459 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:26 2026] 127.0.0.1:61459 Closing
+[Wed May 20 21:02:26 2026] 127.0.0.1:61467 Accepted
+[Wed May 20 21:02:27 2026] 127.0.0.1:61467 [401]: POST /backend/view/components/auth/api-auth.php
+[Wed May 20 21:02:27 2026] 127.0.0.1:61467 Closing
+[Wed May 20 21:02:27 2026] 127.0.0.1:61475 Accepted
+[Wed May 20 21:02:27 2026] 127.0.0.1:61475 [405]: GET /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:27 2026] 127.0.0.1:61475 Closing
+[Wed May 20 21:02:28 2026] 127.0.0.1:61477 Accepted
+[Wed May 20 21:02:28 2026] 127.0.0.1:61477 [400]: POST /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:28 2026] 127.0.0.1:61477 Closing
+[Wed May 20 21:02:28 2026] 127.0.0.1:61485 Accepted
+[Wed May 20 21:02:29 2026] [search-index] SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_bin,NONE) and (binary,COERCIBLE) for operation 'like'
+[Wed May 20 21:02:29 2026] 127.0.0.1:61485 [200]: POST /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:29 2026] 127.0.0.1:61485 Closing
+[Wed May 20 21:02:29 2026] 127.0.0.1:61493 Accepted
+[Wed May 20 21:02:30 2026] [search-index] SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_bin,NONE) and (binary,COERCIBLE) for operation 'like'
+[Wed May 20 21:02:30 2026] 127.0.0.1:61493 [200]: POST /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:30 2026] 127.0.0.1:61493 Closing
+[Wed May 20 21:02:30 2026] 127.0.0.1:61501 Accepted
+[Wed May 20 21:02:30 2026] 127.0.0.1:61501 [200]: POST /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:30 2026] 127.0.0.1:61501 Closing
+[Wed May 20 21:02:31 2026] 127.0.0.1:61509 Accepted
+[Wed May 20 21:02:31 2026] [search-index] SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_bin,NONE) and (binary,COERCIBLE) for operation 'like'
+[Wed May 20 21:02:31 2026] 127.0.0.1:61509 [200]: POST /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:31 2026] 127.0.0.1:61509 Closing
+[Wed May 20 21:02:32 2026] 127.0.0.1:61517 Accepted
+[Wed May 20 21:02:32 2026] [search-index] SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_bin,NONE) and (binary,COERCIBLE) for operation 'like'
+[Wed May 20 21:02:32 2026] 127.0.0.1:61517 [200]: POST /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:32 2026] 127.0.0.1:61517 Closing
+[Wed May 20 21:02:32 2026] 127.0.0.1:61525 Accepted
+[Wed May 20 21:02:33 2026] [search-index] SQLSTATE[HY000]: General error: 1267 Illegal mix of collations (utf8mb4_bin,NONE) and (binary,COERCIBLE) for operation 'like'
+[Wed May 20 21:02:33 2026] 127.0.0.1:61525 [200]: POST /backend/view/components/auth/search-index.php
+[Wed May 20 21:02:33 2026] 127.0.0.1:61525 Closing

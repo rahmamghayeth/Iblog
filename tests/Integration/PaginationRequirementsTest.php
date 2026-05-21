@@ -10,7 +10,6 @@ final class PaginationRequirementsTest extends EndpointTestCase
     public function testFirstPageNavigationReturnsFirstSliceAndNextFlag(): void
     {
         $this->seedPublishedArticles(5);
-
         $response = $this->client->postJson('/backend/view/components/article/api-articles.php', [
             'action' => 'list',
             'page' => 1,
@@ -19,7 +18,6 @@ final class PaginationRequirementsTest extends EndpointTestCase
 
         $this->assertSame(200, $response->status, $response->body);
         $json = $response->json();
-
         $this->assertCount(3, $json['articles'] ?? []);
         $this->assertSame('Paginated Article 5', $json['articles'][0]['title'] ?? null);
         $this->assertSame(1, $json['pagination']['page'] ?? null);
@@ -29,20 +27,16 @@ final class PaginationRequirementsTest extends EndpointTestCase
         $this->assertFalse($json['pagination']['hasPrevious'] ?? true);
         $this->assertTrue($json['pagination']['hasNext'] ?? false);
     }
-
     public function testLastPageNavigationReturnsPartialRemainingItems(): void
     {
         $this->seedPublishedArticles(5);
-
         $response = $this->client->postJson('/backend/view/components/article/api-articles.php', [
             'action' => 'list',
             'page' => 3,
             'pageSize' => 3,
         ]);
-
         $this->assertSame(200, $response->status, $response->body);
         $json = $response->json();
-
         $this->assertCount(1, $json['articles'] ?? []);
         $this->assertSame(3, $json['pagination']['page'] ?? null);
         $this->assertSame(1, $json['pagination']['count'] ?? null);
